@@ -90,7 +90,15 @@ module Cradare2
         @pic
       end
 
+      def pic? : Bool
+        @pic
+      end
+
       def dep? : Bool
+        @nx
+      end
+
+      def nx? : Bool
         @nx
       end
     end
