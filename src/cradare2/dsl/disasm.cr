@@ -63,14 +63,14 @@ module Cradare2
       end
 
       # Decompiles current function or target to C-like pseudocode (pdc, or pdg if ghidra is available).
-      def decompile(target : (UInt64 | String)? = nil) : String
-        ghidra_cmd = target ? "pdg @ #{target}" : "pdg"
+      def decompile(target : (UInt64 | Int32 | Int64 | String)? = nil) : String
+        ghidra_cmd = target ? "pdg @ #{addr_s(target)}" : "pdg"
         ghidra_output = @client.cmd(ghidra_cmd)
         if !ghidra_output.empty? && !ghidra_output.includes?("Cannot") && !ghidra_output.includes?("not found")
           return ghidra_output
         end
 
-        pdc_cmd = target ? "pdc @ #{target}" : "pdc"
+        pdc_cmd = target ? "pdc @ #{addr_s(target)}" : "pdc"
         @client.cmd(pdc_cmd)
       end
     end

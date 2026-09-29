@@ -3,16 +3,22 @@ require "../models/breakpoint"
 require "../models/stack_frame"
 require "../models/memory_map"
 require "../models/thread"
+require "../util/demangler"
 
 module Cradare2
   module DSL
-    # High-level debugger DSL for controlling execution, breakpoints, registers, and threads.
+    # High-level debugger DSL for controlling execution, breakpoints, registers, memory maps, and crash reports.
     class Debugger
       def initialize(@client : Client)
       end
 
-      private def addr_s(address : UInt64 | String) : String
-        address.is_a?(UInt64) ? "0x#{address.to_s(16)}" : address
+      private def addr_s(address : UInt64 | Int32 | Int64 | String) : String
+        case address
+        when Int
+          "0x#{address.to_s(16)}"
+        else
+          address.to_s
+        end
       end
 
       # Continues execution of the debugged process (dc).
@@ -34,19 +40,19 @@ module Cradare2
       end
 
       # Continues execution until reaching the specified target address (dsu).
-      def step_until(address : UInt64 | String) : self
+      def step_until(address : UInt64 | Int32 | Int64 | String) : self
         @client.cmd("dsu #{addr_s(address)}")
         self
       end
 
       # Sets a software breakpoint at the given address or symbol (db).
-      def breakpoint(target : UInt64 | String) : self
+      def breakpoint(target : UInt64 | Int32 | Int64 | String) : self
         @client.cmd("db #{addr_s(target)}")
         self
       end
 
       # Removes a breakpoint at the given address or symbol (db-).
-      def remove_breakpoint(target : UInt64 | String) : self
+      def remove_breakpoint(target : UInt64 | Int32 | Int64 | String) : self
         @client.cmd("db- #{addr_s(target)}")
         self
       end
@@ -84,6 +90,13 @@ module Cradare2
         [] of Model::StackFrame
       end
 
+      # Returns list of demangled backtrace function symbols.
+      def backtrace_symbols : Array(String)
+        backtrace.map do |frame|
+          Util::Demangler.demangle(frame.function, @client.transport)
+        end
+      end
+
       # Returns the loaded memory maps / regions (dmj).
       def maps : Array(Model::MemoryMap)
         @client.cmdj("dmj", as: Array(Model::MemoryMap))
@@ -110,10 +123,86 @@ module Cradare2
         self
       end
 
+      # Sends SIGKILL or terminates the debugged process.
+      def kill : self
+        @client.cmd("dk 9")
+        self
+      end
+
       # Returns current process ID if debugging.
       def pid : Int32?
         res = @client.cmd("dp").strip
         res.to_i?
+      end
+
+      # Returns debugger execution status text.
+      def status : String
+        @client.cmd("d?").strip
+      end
+
+      # Checks if the debugged process is currently active/attached.
+      def running? : Bool
+        pid != nil
+      end
+
+      # Generates a detailed, demangled native crash diagnostic report.
+      # Includes crash instruction pointer, active function, faulting memory region,
+      # registers dump, and demangled call stack.
+      def crash_report(
+        regs : Model::Registers? = nil,
+        bt : Array(Model::StackFrame)? = nil
+      ) : String
+        active_regs = regs || registers
+        active_bt = bt || backtrace
+        pc = active_regs.pc
+
+        io = IO::Memory.new
+        io.puts "=== Native Crash Diagnostic Report ==="
+        io.puts "Crash PC (Instruction Pointer): 0x#{pc.to_s(16)}"
+        io.puts "Stack Pointer (SP):             0x#{active_regs.sp.to_s(16)}"
+        io.puts "Base/Frame Pointer (BP):        0x#{active_regs.bp.to_s(16)}"
+        io.puts
+
+        # Find nearest symbol or function at PC
+        fn_name = "unknown"
+        begin
+          res = @client.cmd("fd @ 0x#{pc.to_s(16)}").strip
+          fn_name = res unless res.empty?
+        rescue
+        end
+        io.puts "Active Function: #{Util::Demangler.demangle(fn_name, @client.transport)}"
+
+        # Identify memory map/region containing PC
+        matching_map = maps.find { |m| m.contains?(pc) }
+        if matching_map
+          io.puts "Faulting Region: #{matching_map.name} (0x#{matching_map.addr.to_s(16)} - 0x#{matching_map.addr_end.to_s(16)}, #{matching_map.perm})"
+        else
+          io.puts "Faulting Region: UNMAPPED MEMORY (Possible Null Pointer Dereference or Wild Branch!)"
+        end
+
+        # Registers dump
+        io.puts "\nRegisters:"
+        if @client.info.bits == 64
+          io.puts "  RAX: 0x#{active_regs.rax.to_s(16)}  RBX: 0x#{active_regs.rbx.to_s(16)}  RCX: 0x#{active_regs.rcx.to_s(16)}"
+          io.puts "  RDX: 0x#{active_regs.rdx.to_s(16)}  RSI: 0x#{active_regs.rsi.to_s(16)}  RDI: 0x#{active_regs.rdi.to_s(16)}"
+          io.puts "  R8:  0x#{active_regs.r8.to_s(16)}   R9:  0x#{active_regs.r9.to_s(16)}   R10: 0x#{active_regs.r10.to_s(16)}"
+        else
+          io.puts "  EAX: 0x#{active_regs.eax.to_s(16)}  EBX: 0x#{active_regs.ebx.to_s(16)}  ECX: 0x#{active_regs.ecx.to_s(16)}"
+          io.puts "  EDX: 0x#{active_regs.edx.to_s(16)}  ESI: 0x#{active_regs.esi.to_s(16)}  EDI: 0x#{active_regs.edi.to_s(16)}"
+        end
+
+        # Backtrace
+        io.puts "\nCall Stack (Demangled):"
+        if active_bt.empty?
+          io.puts "  (No stack frames captured)"
+        else
+          active_bt.each_with_index do |frame, idx|
+            demangled = Util::Demangler.demangle(frame.function, @client.transport)
+            io.puts "  ##{idx} 0x#{frame.pc.to_s(16)} in #{demangled}"
+          end
+        end
+
+        io.to_s
       end
     end
   end

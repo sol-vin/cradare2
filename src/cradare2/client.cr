@@ -13,11 +13,11 @@ require "./models/breakpoint"
 require "./models/stack_frame"
 require "./models/memory_map"
 require "./models/thread"
+require "./util/demangler"
 require "./dsl/analysis"
 require "./dsl/disasm"
 require "./dsl/memory"
 require "./dsl/debugger"
-require "./dsl/lapis_helper"
 
 module Cradare2
   # The central client representing an open radare2 session.
@@ -28,7 +28,6 @@ module Cradare2
     @disasm : DSL::Disassembly?
     @memory : DSL::Memory?
     @debugger : DSL::Debugger?
-    @lapis : DSL::LapisHelper?
 
     def initialize(@transport : Transport::Base)
     end
@@ -59,8 +58,8 @@ module Cradare2
     end
 
     # Seeks to the specified target address or symbol (s <target>).
-    def seek(target : UInt64 | String) : self
-      target_str = target.is_a?(UInt64) ? "0x#{target.to_s(16)}" : target
+    def seek(target : UInt64 | Int32 | Int64 | String) : self
+      target_str = target.is_a?(Int) ? "0x#{target.to_s(16)}" : target
       cmd("s #{target_str}")
       self
     end
@@ -131,6 +130,82 @@ module Cradare2
       [] of Model::StringItem
     end
 
+    # Demangles a symbol using radare2 and internal caching.
+    def demangle(symbol : String) : String
+      Util::Demangler.demangle(symbol, @transport)
+    end
+
+    # Finds a specific symbol by name or display name.
+    def find_symbol(name : String) : Model::Symbol?
+      symbols.find { |s| s.name == name || s.display_name == name }
+    end
+
+    # Finds a specific function by name.
+    def find_function(name : String) : Model::Function?
+      functions.find { |f| f.name == name }
+    end
+
+    # Filters symbols matching a substring or regex pattern.
+    def symbols_matching(pattern : Regex | String) : Array(Model::Symbol)
+      symbols.select do |s|
+        case pattern
+        when Regex
+          pattern.matches?(s.name) || (s.demangled ? pattern.matches?(s.demangled.not_nil!) : false)
+        when String
+          s.name.includes?(pattern) || (s.demangled ? s.demangled.not_nil!.includes?(pattern) : false)
+        else
+          false
+        end
+      end
+    end
+
+    # Filters functions matching a substring or regex pattern.
+    def functions_matching(pattern : Regex | String) : Array(Model::Function)
+      functions.select do |f|
+        case pattern
+        when Regex
+          pattern.matches?(f.name)
+        when String
+          f.name.includes?(pattern)
+        else
+          false
+        end
+      end
+    end
+
+    # Filters exports matching a substring or regex pattern.
+    def exports_matching(pattern : Regex | String) : Array(Model::Export)
+      exports.select do |e|
+        case pattern
+        when Regex
+          pattern.matches?(e.name) || (e.demangled ? pattern.matches?(e.demangled.not_nil!) : false)
+        when String
+          e.name.includes?(pattern) || (e.demangled ? e.demangled.not_nil!.includes?(pattern) : false)
+        else
+          false
+        end
+      end
+    end
+
+    # Filters imports matching a substring or regex pattern.
+    def imports_matching(pattern : Regex | String) : Array(Model::Import)
+      imports.select do |i|
+        case pattern
+        when Regex
+          pattern.matches?(i.name)
+        when String
+          i.name.includes?(pattern)
+        else
+          false
+        end
+      end
+    end
+
+    # Filters strings matching a substring.
+    def strings_matching(query : String) : Array(Model::StringItem)
+      strings.select { |s| s.string.includes?(query) }
+    end
+
     # Access the Analysis DSL. Supports fluent chaining or block syntax.
     def analyze : DSL::Analysis
       @analysis ||= DSL::Analysis.new(self)
@@ -164,11 +239,6 @@ module Cradare2
     def debug(&block : DSL::Debugger ->) : self
       block.call(debug)
       self
-    end
-
-    # Access the Lapis & GDExtension debugging helpers.
-    def lapis : DSL::LapisHelper
-      @lapis ||= DSL::LapisHelper.new(self)
     end
 
     # Closes the radare2 session.

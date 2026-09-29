@@ -47,4 +47,47 @@ describe Cradare2::Client do
       client.cmdj("bad")
     end
   end
+
+  it "finds symbols and functions by name" do
+    client = SpecFixtures.build_mock_client
+    sym = client.find_symbol("sym.main")
+    sym.should_not be_nil
+    sym.not_nil!.offset.should eq(4198400)
+
+    fn = client.find_function("sym.main")
+    fn.should_not be_nil
+    fn.not_nil!.size.should eq(128)
+
+    client.find_symbol("non_existent").should be_nil
+    client.find_function("non_existent").should be_nil
+  end
+
+  it "filters symbols, functions, exports, imports, and strings with regex and strings" do
+    client = SpecFixtures.build_mock_client
+
+    matching_syms = client.symbols_matching(/Player/)
+    matching_syms.size.should eq(1)
+    matching_syms[0].display_name.should eq("MyGame::Player#_ready:Nil")
+
+    matching_funcs = client.functions_matching("main")
+    matching_funcs.size.should eq(1)
+    matching_funcs[0].name.should eq("sym.main")
+
+    matching_exports = client.exports_matching(/entry/)
+    matching_exports.size.should eq(1)
+    matching_exports[0].name.should eq("lapis_gdextension_entry")
+
+    matching_imports = client.imports_matching("string")
+    matching_imports.size.should eq(1)
+    matching_imports[0].name.should eq("godot_string_new")
+
+    matching_strings = client.strings_matching("Godot")
+    matching_strings.size.should eq(1)
+    matching_strings[0].string.should eq("Godot Engine Initialized")
+  end
+
+  it "demangles symbols via client" do
+    client = Cradare2.mock
+    client.demangle("*MyClass#my_method:Int32").should eq("MyClass#my_method:Int32")
+  end
 end

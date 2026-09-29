@@ -47,7 +47,6 @@ describe Cradare2::Transport do
 
   describe Cradare2::Transport::ProcessTransport do
     it "spawns radare2 with null-byte delimiter communication" do
-      # Test live process transport if radare2 binary exists on system
       r2_bin = Process.find_executable("r2") || Process.find_executable("radare2")
       if r2_bin
         transport = Cradare2::Transport::ProcessTransport.new("malloc://64")
@@ -62,6 +61,12 @@ describe Cradare2::Transport do
           transport.close
         end
         transport.closed?.should be_true
+      end
+    end
+
+    it "raises BinaryNotFoundError for non-existent executable" do
+      expect_raises(Cradare2::BinaryNotFoundError) do
+        Cradare2::Transport::ProcessTransport.new("malloc://64", r2_path: "non_existent_binary_xyz_123")
       end
     end
   end
@@ -79,6 +84,41 @@ describe Cradare2::Transport do
       expect_raises(Cradare2::TransportError, /Invalid TCP URI scheme/) do
         Cradare2::Transport::TcpTransport.new("http://localhost:9090")
       end
+    end
+  end
+
+  describe Cradare2::Transport::InSessionTransport do
+    it "raises TransportError when in-session environment variables are missing" do
+      # Temporarily ensure env vars are clear
+      old_in = ENV["R2PIPE_IN"]?
+      old_out = ENV["R2PIPE_OUT"]?
+      old_path = ENV["R2PIPE_PATH"]?
+      ENV.delete("R2PIPE_IN")
+      ENV.delete("R2PIPE_OUT")
+      ENV.delete("R2PIPE_PATH")
+
+      begin
+        expect_raises(Cradare2::TransportError, /In-session r2pipe environment variables/) do
+          Cradare2::Transport::InSessionTransport.new
+        end
+      ensure
+        ENV["R2PIPE_IN"] = old_in if old_in
+        ENV["R2PIPE_OUT"] = old_out if old_out
+        ENV["R2PIPE_PATH"] = old_path if old_path
+      end
+    end
+  end
+
+  describe Cradare2::Util::Locator do
+    it "finds existing r2 binary in system" do
+      path = Cradare2::Util::Locator.find_r2
+      File.exists?(path).should be_true
+    end
+
+    it "accepts custom r2 binary path" do
+      existing = Cradare2::Util::Locator.find_r2
+      custom = Cradare2::Util::Locator.find_r2(existing)
+      custom.should eq(existing)
     end
   end
 end

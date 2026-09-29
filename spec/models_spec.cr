@@ -142,4 +142,38 @@ describe Cradare2::Model do
       instrs[1].jump.should eq(4198912)
     end
   end
+
+  describe Cradare2::Model::BasicBlock do
+    it "parses basic block json" do
+      json = "{\"addr\": 4198400, \"size\": 32, \"jump\": 4198432, \"fail\": 4198440, \"ninstrs\": 8}"
+      bb = Cradare2::Model::BasicBlock.from_json(json)
+      bb.offset.should eq(4198400)
+      bb.size.should eq(32)
+      bb.jump.should eq(4198432)
+      bb.fail.should eq(4198440)
+      bb.ninstrs.should eq(8)
+    end
+  end
+
+  describe Cradare2::Model::Breakpoint do
+    it "parses breakpoint json and checks properties" do
+      json = "{\"addr\": 4198400, \"size\": 1, \"hw\": true, \"enabled\": true, \"hits\": 5}"
+      bp = Cradare2::Model::Breakpoint.from_json(json)
+      bp.offset.should eq(4198400)
+      bp.enabled?.should be_true
+      bp.hardware?.should be_true
+      bp.hits.should eq(5)
+    end
+  end
+
+  describe Cradare2::Model::Thread do
+    it "parses thread json" do
+      json = "{\"id\": 101, \"status\": \"running\", \"selected\": true, \"name\": \"MainThread\"}"
+      th = Cradare2::Model::Thread.from_json(json)
+      th.id.should eq(101)
+      th.status.should eq("running")
+      th.selected?.should be_true
+      th.name.should eq("MainThread")
+    end
+  end
 end
