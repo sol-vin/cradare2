@@ -31,7 +31,7 @@ module Cradare2
 
       def self.run(client : Client) : Nil
         model = new(client)
-        prog = Opal::TEA::Program.new(model, alt_screen: true, mouse_cell_motion: false)
+        prog = Opal::TEA::Program.new(model, alt_screen: true, mouse_enabled: false)
         prog.run
       end
 
