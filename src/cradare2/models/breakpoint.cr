@@ -35,6 +35,10 @@ module Cradare2
       def hardware? : Bool
         hw == true
       end
+
+      def hit_count : Int32
+        hits || 0
+      end
     end
   end
 end

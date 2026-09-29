@@ -35,6 +35,11 @@ module Cradare2
         end
       end
 
+      # Disassembles instructions starting at specified address.
+      def at(address : UInt64 | Int32 | Int64 | String, count : Int32 = 1) : Array(Model::Instruction)
+        instructions(count: count, at: address)
+      end
+
       # Disassembles an entire function by name or address as formatted text.
       def function_text(target : (UInt64 | Int32 | Int64 | String)? = nil) : String
         cmd_str = target ? "pdf @ #{addr_s(target)}" : "pdf"

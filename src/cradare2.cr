@@ -8,6 +8,7 @@ require "./cradare2/transport/http"
 require "./cradare2/transport/tcp"
 require "./cradare2/transport/in_session"
 require "./cradare2/transport/mock"
+require "./cradare2/crystal"
 require "./cradare2/client"
 
 module Cradare2
@@ -24,7 +25,7 @@ module Cradare2
     debug : Bool = false,
     write : Bool = false,
     r2_path : String? = nil,
-    timeout : Time::Span? = nil
+    timeout : Time::Span? = nil,
   ) : Client
     transport = build_transport(target, flags, debug, write, r2_path, timeout)
     Client.new(transport)
@@ -71,7 +72,7 @@ module Cradare2
     debug : Bool,
     write : Bool,
     r2_path : String?,
-    timeout : Time::Span?
+    timeout : Time::Span?,
   ) : Transport::Base
     if target.nil? || target.empty? || target == "#!pipe"
       Transport::InSessionTransport.new(timeout: timeout)
@@ -93,5 +94,5 @@ module Cradare2
 end
 
 # Convenient top-level aliases
-R2 = Cradare2
+R2     = Cradare2
 R2Pipe = Cradare2

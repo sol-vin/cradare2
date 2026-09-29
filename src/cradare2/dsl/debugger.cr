@@ -150,7 +150,7 @@ module Cradare2
       # registers dump, and demangled call stack.
       def crash_report(
         regs : Model::Registers? = nil,
-        bt : Array(Model::StackFrame)? = nil
+        bt : Array(Model::StackFrame)? = nil,
       ) : String
         active_regs = regs || registers
         active_bt = bt || backtrace

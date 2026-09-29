@@ -75,15 +75,15 @@ describe Cradare2::Client do
 
     matching_exports = client.exports_matching(/entry/)
     matching_exports.size.should eq(1)
-    matching_exports[0].name.should eq("lapis_gdextension_entry")
+    matching_exports[0].name.should eq("crystal_library_entry")
 
     matching_imports = client.imports_matching("string")
     matching_imports.size.should eq(1)
     matching_imports[0].name.should eq("godot_string_new")
 
-    matching_strings = client.strings_matching("Godot")
-    matching_strings.size.should eq(1)
-    matching_strings[0].string.should eq("Godot Engine Initialized")
+    matching_strings = client.strings_matching("Crystal")
+    matching_strings.size.should eq(2)
+    matching_strings[0].string.should eq("Crystal Library Initialized")
   end
 
   it "demangles symbols via client" do

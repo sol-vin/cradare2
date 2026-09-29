@@ -19,6 +19,12 @@ module Cradare2
         self
       end
 
+      # Registers a dynamic mock block handler for an exact command string.
+      def on(command : String, &block : String -> String) : self
+        @handlers << {command, block}
+        self
+      end
+
       # Registers a mock dynamic block handler for a regex command match.
       def on(pattern : Regex, &block : String -> String) : self
         @handlers << {pattern, block}

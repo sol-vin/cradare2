@@ -171,7 +171,7 @@ describe Cradare2::DSL do
     it "demangles backtrace symbols" do
       client = SpecFixtures.build_mock_client
       syms = client.debug.backtrace_symbols
-      syms.should eq(["MyGame::Player#_process:Float64", "lapis_gdextension_entry"])
+      syms.should eq(["MyGame::Player#_process:Float64", "crystal_library_entry"])
     end
   end
 end

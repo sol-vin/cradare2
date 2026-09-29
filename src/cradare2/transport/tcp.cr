@@ -17,8 +17,14 @@ module Cradare2
           raise TransportError.new("Invalid TCP URI scheme: #{@uri.scheme.inspect}")
         end
 
-        host = @uri.host || "127.0.0.1"
-        port = @uri.port || 9090
+        host = @uri.host.presence
+        unless host
+          raise TransportError.new("Invalid TCP URI: host missing")
+        end
+        port = @uri.port
+        unless port
+          raise TransportError.new("Missing port in TCP URI: #{target}")
+        end
 
         @socket = connect_socket(host, port)
       end

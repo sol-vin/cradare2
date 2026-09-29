@@ -18,6 +18,7 @@ require "./dsl/analysis"
 require "./dsl/disasm"
 require "./dsl/memory"
 require "./dsl/debugger"
+require "./crystal"
 
 module Cradare2
   # The central client representing an open radare2 session.
@@ -28,6 +29,7 @@ module Cradare2
     @disasm : DSL::Disassembly?
     @memory : DSL::Memory?
     @debugger : DSL::Debugger?
+    @crystal : CrystalHelper?
 
     def initialize(@transport : Transport::Base)
     end
@@ -238,6 +240,16 @@ module Cradare2
 
     def debug(&block : DSL::Debugger ->) : self
       block.call(debug)
+      self
+    end
+
+    # Access the Crystal binary analysis and memory inspection helper.
+    def crystal : CrystalHelper
+      @crystal ||= CrystalHelper.new(self)
+    end
+
+    def crystal(&block : CrystalHelper ->) : self
+      block.call(crystal)
       self
     end
 

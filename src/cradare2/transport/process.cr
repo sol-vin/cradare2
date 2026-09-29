@@ -21,7 +21,7 @@ module Cradare2
         debug : Bool = false,
         write : Bool = false,
         r2_path : String? = nil,
-        @timeout : Time::Span? = nil
+        @timeout : Time::Span? = nil,
       )
         bin = Util::Locator.find_r2(r2_path)
 

@@ -1,8 +1,12 @@
 # cradare2
 
+[![CI](https://github.com/sol-vin/cradare2/actions/workflows/ci.yml/badge.svg)](https://github.com/sol-vin/cradare2/actions/workflows/ci.yml)
+[![Docs](https://img.shields.io/badge/docs-GitHub%20Pages-blue.svg)](https://sol-vin.github.io/cradare2/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 A powerful, idiomatic Crystal library and high-level DSL for controlling [radare2](https://www.radare.org/) via the `r2pipe` protocol across **Windows**, **Linux**, and **macOS**.
 
-Includes low-level command framing, strongly typed `JSON::Serializable` models, rich DSL modules for binary analysis, memory manipulation, disassembly, and native debugging (breakpoints, CPU registers, stack unwinding, memory maps, and demangled crash reporting).
+Includes low-level command framing, strongly typed `JSON::Serializable` models, rich DSL modules for binary analysis, memory manipulation, disassembly, Crystal runtime inspection, and native debugging (breakpoints, CPU registers, stack unwinding, memory maps, and demangled crash reporting).
 
 ---
 
@@ -215,6 +219,42 @@ Call Stack (Demangled):
   #1 0x4010a0 in entry_point
 ```
 
+### Crystal Binary & Runtime Inspection (`r2.crystal`)
+
+`cradare2` includes first-class tools for analyzing Crystal binaries, parsing mangled method signatures, and inspecting Crystal object layouts directly in memory:
+
+```crystal
+R2.open("my_crystal_app") do |r2|
+  r2.analyze.all
+
+  # Detect Crystal binaries and locate entrypoint
+  if r2.crystal.crystal_binary?
+    puts "Entrypoint: 0x#{r2.crystal.entrypoint.try(&.to_s(16))}"
+  end
+
+  # Discover all Crystal classes and their analyzed methods
+  r2.crystal.classes.each do |cls|
+    methods = r2.crystal.methods_for_class(cls)
+    puts "Class #{cls}: #{methods.size} methods"
+  end
+
+  # Inspect runtime Crystal String in memory (offset 0: type_id, 4: bytesize, 8: length, 12: UTF-8 bytes)
+  str = r2.crystal.read_string(0x1000)
+  puts "String value: #{str.value} (length: #{str.length}, bytesize: #{str.bytesize})"
+
+  # Inspect Crystal Array(T) header (type_id, size, capacity, buffer pointer)
+  arr = r2.crystal.read_array_header(0x2000)
+  puts "Array size: #{arr.size}, capacity: #{arr.capacity}, buffer: 0x#{arr.buffer_address.to_s(16)}"
+
+  # Inspect Crystal Slice(T) header (size, read_only, pointer)
+  slice = r2.crystal.read_slice_header(0x3000)
+  puts "Slice size: #{slice.size}, read_only: #{slice.read_only?}"
+
+  # Crystal-specific demangled crash report with stack trace and registers
+  puts r2.crystal.crash_report
+end
+```
+
 ---
 
 ## Building Custom Debuggers with `cradare2`
@@ -256,7 +296,7 @@ Run the test suite using Crystal's built-in spec runner:
 crystal spec --verbose
 ```
 
-All 48 specs run out-of-the-box using the internal `MockTransport` without requiring external network access.
+All 68 specs run out-of-the-box using the internal `MockTransport` without requiring external network access.
 
 ---
 

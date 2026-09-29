@@ -60,7 +60,7 @@ module Cradare2
             "/usr/local/bin/radare2",
             "/opt/homebrew/bin/radare2",
             File.expand_path("~/bin/r2"),
-            File.expand_path("~/.local/bin/r2")
+            File.expand_path("~/.local/bin/r2"),
           ]
           unix_candidates.each do |cand|
             return cand if File.exists?(cand)

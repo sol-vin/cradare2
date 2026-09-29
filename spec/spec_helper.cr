@@ -39,7 +39,7 @@ module SpecFixtures
     },
     {
       "addr": 4198528,
-      "name": "sym.lapis_gdextension_entry",
+      "name": "sym.crystal_library_entry",
       "size": 256,
       "cc": 1,
       "calltype": "stdcall",
@@ -84,7 +84,7 @@ module SpecFixtures
   SAMPLE_IEJ = <<-JSON
   [
     {
-      "name": "lapis_gdextension_entry",
+      "name": "crystal_library_entry",
       "vaddr": 4198528,
       "paddr": 1152,
       "size": 256,
@@ -134,18 +134,18 @@ module SpecFixtures
   SAMPLE_IZJ = <<-JSON
   [
     {
-      "string": "Godot Engine Initialized",
+      "string": "Crystal Library Initialized",
       "vaddr": 4231200,
-      "size": 24,
-      "length": 24,
+      "size": 26,
+      "length": 26,
       "section": ".data",
       "type": "ascii"
     },
     {
-      "string": "Lapis Runtime Active",
+      "string": "Crystal Runtime Active",
       "vaddr": 4231230,
-      "size": 20,
-      "length": 20,
+      "size": 22,
+      "length": 22,
       "section": ".data",
       "type": "ascii"
     }
@@ -190,7 +190,7 @@ module SpecFixtures
       "sp": 140723423056,
       "bp": 140723423096,
       "pc": 4198560,
-      "fname": "lapis_gdextension_entry",
+      "fname": "crystal_library_entry",
       "offset": 4198528
     }
   ]
@@ -236,6 +236,12 @@ module SpecFixtures
     }
   ]
   JSON
+
+  # Builds a mock client with a dynamic command handler proc
+  def self.build_mock_with_handler(&block : String -> String) : Cradare2::Client
+    transport = Cradare2::Transport::MockTransport.new(block)
+    Cradare2::Client.new(transport)
+  end
 
   # Builds a mock client populated with standard test responses
   def self.build_mock_client : Cradare2::Client

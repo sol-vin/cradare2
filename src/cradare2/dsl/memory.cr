@@ -23,6 +23,11 @@ module Cradare2
         Bytes.empty
       end
 
+      # Alias for `read`.
+      def read_bytes(address : UInt64 | String, size : Int32) : Bytes
+        read(address, size)
+      end
+
       # Reads bytes formatted as a continuous hex string.
       def read_hex(address : UInt64 | String, size : Int32) : String
         @client.cmd("p8 #{size} @ #{addr_s(address)}").strip
@@ -58,6 +63,36 @@ module Cradare2
         IO::ByteFormat::LittleEndian.decode(UInt64, bytes)
       end
 
+      # Reads signed integers of various bit widths.
+      def read_i8(address : UInt64 | String) : Int8
+        read_u8(address).to_i8!
+      end
+
+      def read_i16(address : UInt64 | String) : Int16
+        read_u16(address).to_i16!
+      end
+
+      def read_i32(address : UInt64 | String) : Int32
+        read_u32(address).to_i32!
+      end
+
+      def read_i64(address : UInt64 | String) : Int64
+        read_u64(address).to_i64!
+      end
+
+      # Reads floating-point numbers.
+      def read_f32(address : UInt64 | String) : Float32
+        bytes = read(address, 4)
+        return 0.0_f32 if bytes.size < 4
+        IO::ByteFormat::LittleEndian.decode(Float32, bytes)
+      end
+
+      def read_f64(address : UInt64 | String) : Float64
+        bytes = read(address, 8)
+        return 0.0_f64 if bytes.size < 8
+        IO::ByteFormat::LittleEndian.decode(Float64, bytes)
+      end
+
       # Writes a slice of bytes to the given address using `wx`.
       def write(address : UInt64 | String, bytes : Bytes) : self
         hex_str = bytes.hexstring
@@ -83,10 +118,18 @@ module Cradare2
         self
       end
 
+      def write_i32(address : UInt64 | String, value : Int32) : self
+        write_u32(address, value.to_u32!)
+      end
+
       # Writes a 64-bit integer.
       def write_u64(address : UInt64 | String, value : UInt64) : self
         @client.cmd("wv8 #{value} @ #{addr_s(address)}")
         self
+      end
+
+      def write_i64(address : UInt64 | String, value : Int64) : self
+        write_u64(address, value.to_u64!)
       end
 
       # Returns formatted hexdump text for human inspection.

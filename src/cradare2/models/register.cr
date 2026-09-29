@@ -62,38 +62,116 @@ module Cradare2
         self["rbp"]? || self["ebp"]? || self["fp"]? || 0_u64
       end
 
-      # x86_64 registers
-      def rip : UInt64; self["rip"]; end
-      def rsp : UInt64; self["rsp"]; end
-      def rbp : UInt64; self["rbp"]; end
-      def rax : UInt64; self["rax"]; end
-      def rbx : UInt64; self["rbx"]; end
-      def rcx : UInt64; self["rcx"]; end
-      def rdx : UInt64; self["rdx"]; end
-      def rsi : UInt64; self["rsi"]; end
-      def rdi : UInt64; self["rdi"]; end
-      def r8  : UInt64; self["r8"];  end
-      def r9  : UInt64; self["r9"];  end
-      def r10 : UInt64; self["r10"]; end
-      def r11 : UInt64; self["r11"]; end
-      def r12 : UInt64; self["r12"]; end
-      def r13 : UInt64; self["r13"]; end
-      def r14 : UInt64; self["r14"]; end
-      def r15 : UInt64; self["r15"]; end
+      # x86_64 registers with 32-bit and ARM fallbacks
+      def rip : UInt64
+        pc
+      end
+
+      def rsp : UInt64
+        sp
+      end
+
+      def rbp : UInt64
+        bp
+      end
+
+      def rax : UInt64
+        self["rax"]? || self["eax"]? || self["x0"]? || self["r0"]? || 0_u64
+      end
+
+      def rbx : UInt64
+        self["rbx"]? || self["ebx"]? || self["x1"]? || self["r1"]? || 0_u64
+      end
+
+      def rcx : UInt64
+        self["rcx"]? || self["ecx"]? || self["x2"]? || self["r2"]? || 0_u64
+      end
+
+      def rdx : UInt64
+        self["rdx"]? || self["edx"]? || self["x3"]? || self["r3"]? || 0_u64
+      end
+
+      def rsi : UInt64
+        self["rsi"]? || self["esi"]? || self["x4"]? || self["r4"]? || 0_u64
+      end
+
+      def rdi : UInt64
+        self["rdi"]? || self["edi"]? || self["x5"]? || self["r5"]? || 0_u64
+      end
+
+      def r8 : UInt64
+        self["r8"]
+      end
+
+      def r9 : UInt64
+        self["r9"]
+      end
+
+      def r10 : UInt64
+        self["r10"]
+      end
+
+      def r11 : UInt64
+        self["r11"]
+      end
+
+      def r12 : UInt64
+        self["r12"]
+      end
+
+      def r13 : UInt64
+        self["r13"]
+      end
+
+      def r14 : UInt64
+        self["r14"]
+      end
+
+      def r15 : UInt64
+        self["r15"]
+      end
 
       # x86 (32-bit) registers
-      def eip : UInt64; self["eip"]; end
-      def esp : UInt64; self["esp"]; end
-      def ebp : UInt64; self["ebp"]; end
-      def eax : UInt64; self["eax"]; end
-      def ebx : UInt64; self["ebx"]; end
-      def ecx : UInt64; self["ecx"]; end
-      def edx : UInt64; self["edx"]; end
-      def esi : UInt64; self["esi"]; end
-      def edi : UInt64; self["edi"]; end
+      def eip : UInt64
+        self["eip"]
+      end
+
+      def esp : UInt64
+        self["esp"]
+      end
+
+      def ebp : UInt64
+        self["ebp"]
+      end
+
+      def eax : UInt64
+        self["eax"]
+      end
+
+      def ebx : UInt64
+        self["ebx"]
+      end
+
+      def ecx : UInt64
+        self["ecx"]
+      end
+
+      def edx : UInt64
+        self["edx"]
+      end
+
+      def esi : UInt64
+        self["esi"]
+      end
+
+      def edi : UInt64
+        self["edi"]
+      end
 
       # Flags
-      def eflags : UInt64; self["eflags"]? || self["rflags"]? || 0_u64; end
+      def eflags : UInt64
+        self["eflags"]? || self["rflags"]? || 0_u64
+      end
     end
   end
 end

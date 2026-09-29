@@ -1,0 +1,160 @@
+name: CI
+
+on:
+  push:
+    branches: [ master, main ]
+  pull_request:
+    branches: [ master, main ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/master' }}
+
+jobs:
+  # =========================================================================
+  # LINT & FORMATTING CHECK
+  # =========================================================================
+  lint:
+    name: Lint & Format Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Install Crystal
+        uses: crystal-lang/install-crystal@v1
+        with:
+          crystal: 1.21.0
+
+      - name: Verify Code Formatting
+        run: |
+          crystal tool format --check
+
+  # =========================================================================
+  # MULTI-OS TEST MATRIX (Linux, macOS, Windows) x (1.21.0, latest)
+  # =========================================================================
+  test:
+    name: Test (${{ matrix.os }}, Crystal ${{ matrix.crystal }})
+    needs: [lint]
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        crystal: ["1.21.0", "latest"]
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Install Crystal (${{ matrix.crystal }})
+        uses: crystal-lang/install-crystal@v1
+        with:
+          crystal: ${{ matrix.crystal }}
+
+      - name: Cache Crystal Cache (Linux / macOS)
+        if: runner.os != 'Windows'
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/crystal
+          key: crystal-cache-${{ runner.os }}-${{ matrix.crystal }}-${{ hashFiles('shard.yml') }}
+          restore-keys: |
+            crystal-cache-${{ runner.os }}-${{ matrix.crystal }}-
+
+      - name: Cache Crystal Cache (Windows)
+        if: runner.os == 'Windows'
+        uses: actions/cache@v4
+        with:
+          path: ~\AppData\Local\crystal\cache
+          key: crystal-cache-${{ runner.os }}-${{ matrix.crystal }}-${{ hashFiles('shard.yml') }}
+          restore-keys: |
+            crystal-cache-${{ runner.os }}-${{ matrix.crystal }}-
+
+      - name: Install radare2 (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y radare2
+
+      - name: Install radare2 (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          brew install radare2
+
+      - name: Install radare2 (Windows)
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: |
+          choco install radare2 -y --no-progress
+          if (Test-Path "C:\tools\radare2\bin") {
+            "C:\tools\radare2\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          }
+          if (Test-Path "C:\ProgramData\chocolatey\bin") {
+            "C:\ProgramData\chocolatey\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          }
+
+      - name: Verify radare2 Version
+        shell: bash
+        run: |
+          if command -v r2 >/dev/null 2>&1; then
+            r2 -v
+          elif command -v radare2 >/dev/null 2>&1; then
+            radare2 -v
+          else
+            echo "radare2 not in PATH, checking default install paths..."
+          fi
+
+      - name: Run Test Suite
+        run: |
+          crystal spec --verbose
+
+      - name: Run Sample Examples
+        run: |
+          crystal run examples/basic_analysis.cr
+          crystal run examples/crystal_inspector.cr
+
+  # =========================================================================
+  # DOCUMENTATION GENERATION & PAGES DEPLOYMENT
+  # =========================================================================
+  docs:
+    name: Generate Documentation
+    needs: [test]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/master' && github.event_name == 'push'
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Install Crystal
+        uses: crystal-lang/install-crystal@v1
+        with:
+          crystal: 1.21.0
+
+      - name: Build Crystal Docs
+        run: |
+          crystal docs
+          touch docs/.nojekyll
+
+      - name: Upload Pages Artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs/
+
+  deploy-pages:
+    name: Deploy to GitHub Pages
+    needs: [docs]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/master' && github.event_name == 'push'
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

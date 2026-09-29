@@ -16,7 +16,10 @@ module Cradare2
           raise TransportError.new("Invalid HTTP URI scheme: #{@uri.scheme.inspect}")
         end
 
-        host = @uri.host || "127.0.0.1"
+        host = @uri.host.presence
+        unless host
+          raise TransportError.new("Invalid HTTP URI: host missing")
+        end
         port = @uri.port || (@uri.scheme == "https" ? 443 : 9090)
         tls = @uri.scheme == "https"
 
