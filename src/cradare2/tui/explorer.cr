@@ -13,7 +13,7 @@ module Cradare2
       getter functions : Array(Model::Function)
       getter filtered_functions : Array(Model::Function)
       getter selected_func_idx : Int32 = 0
-      getter active_tab : Int32 = 0 # 0: Code, 1: Sections, 2: Security
+      getter active_tab : Int32 = 0      # 0: Code, 1: Sections, 2: Security
       getter focus_pane : Symbol = :list # :list or :code
       getter? side_by_side : Bool = true
       getter? show_asm : Bool = true
@@ -213,7 +213,7 @@ module Cradare2
                         tbl.row([
                           "#{prefix}0x#{fn.offset.to_s(16)}",
                           name_display,
-                          "#{fn.size} B"
+                          "#{fn.size} B",
                         ])
                       end
                     end
@@ -244,7 +244,6 @@ module Cradare2
                   end
                 end
               end
-
             when 1 # Sections
               sections = @client.sections
               root.box(title: "Binary Sections (#{sections.size})", border_fg: :cyan) do |b|
@@ -258,12 +257,11 @@ module Cradare2
                       "0x#{sec.vaddr.to_s(16)}",
                       "#{sec.vsize} B",
                       "#{sec.size} B",
-                      sec.perm || "---"
+                      sec.perm || "---",
                     ])
                   end
                 end
               end
-
             when 2 # Security Posture
               sec = @client.security
               root.box(title: "Binary Security Posture Analysis", border_fg: :cyan) do |b|

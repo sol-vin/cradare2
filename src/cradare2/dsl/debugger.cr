@@ -166,7 +166,7 @@ module Cradare2
       # Generates a structured crash diagnosis with root-cause pattern analysis and remediation steps.
       def diagnose_crash(
         regs : Model::Registers? = nil,
-        bt : Array(Model::StackFrame)? = nil
+        bt : Array(Model::StackFrame)? = nil,
       ) : Model::CrashDiagnosis
         active_regs = regs || registers
         active_bt = bt || backtrace
@@ -217,6 +217,7 @@ module Cradare2
           recommendations: recs
         )
       end
+
       # Generates a detailed, demangled native crash diagnostic report.
       # Includes crash instruction pointer, active function, faulting memory region,
       # registers dump, and demangled call stack.

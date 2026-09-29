@@ -161,6 +161,7 @@ module Cradare2
     def security : Model::SecurityInfo
       Model::SecurityInfo.from_bin_info(info.bin)
     end
+
     # Finds a specific symbol by name or display name.
     def find_symbol(name : String) : Model::Symbol?
       symbols.find { |s| s.name == name || s.display_name == name }
