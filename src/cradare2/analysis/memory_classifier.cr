@@ -130,10 +130,12 @@ module Cradare2
         perm = matching.perm || "---"
         region_type = classify_region_type(name, perm)
 
+        mod_name = name.split(/[\/\\]/).reject(&.empty?).last? || name
+
         ClassifiedAddress.new(
           address: address,
           region_type: region_type,
-          module_name: File.basename(name),
+          module_name: mod_name,
           permissions: perm,
           nearest_symbol: nearest_symbol
         )

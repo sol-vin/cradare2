@@ -78,6 +78,7 @@ describe "Cradare2 Expanded Features & Analysis" do
     maps = [
       Cradare2::Model::MemoryMap.new(0x140000000_u64, 0x140010000_u64, "r-x", "C:\\games\\game.dll"),
       Cradare2::Model::MemoryMap.new(0x7ff810000000_u64, 0x7ff810050000_u64, "r-x", "C:\\Windows\\System32\\ntdll.dll"),
+      Cradare2::Model::MemoryMap.new(0x7fff20000000_u64, 0x7fff20050000_u64, "r-x", "/usr/lib/x86_64-linux-gnu/libc.so.6"),
       Cradare2::Model::MemoryMap.new(0x00000045f000_u64, 0x00000045ffff_u64, "rw-", "[stack]"),
       Cradare2::Model::MemoryMap.new(0x0000021b3000_u64, 0x0000021b8000_u64, "rw-", "[heap]"),
     ]
@@ -95,16 +96,21 @@ describe "Cradare2 Expanded Features & Analysis" do
       c_code.executable?.should be_true
       c_code.module_name.should eq("game.dll")
 
-      # 3. System CRT / Kernel
+      # 3. System CRT / Kernel (Windows)
       c_sys = classifier.classify(0x7ff810001000_u64)
       c_sys.region_type.should eq(Cradare2::Analysis::MemoryRegionType::SystemCRT)
       c_sys.module_name.should eq("ntdll.dll")
 
-      # 4. Stack
+      # 4. System CRT (POSIX)
+      c_libc = classifier.classify(0x7fff20001000_u64)
+      c_libc.region_type.should eq(Cradare2::Analysis::MemoryRegionType::SystemCRT)
+      c_libc.module_name.should eq("libc.so.6")
+
+      # 5. Stack
       c_stack = classifier.classify(0x00000045f100_u64)
       c_stack.region_type.should eq(Cradare2::Analysis::MemoryRegionType::Stack)
 
-      # 5. Unmapped memory
+      # 6. Unmapped memory
       c_unmapped = classifier.classify(0xdeadbeefcafebabe_u64)
       c_unmapped.region_type.should eq(Cradare2::Analysis::MemoryRegionType::Unmapped)
       c_unmapped.unmapped?.should be_true
