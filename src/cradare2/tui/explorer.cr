@@ -36,7 +36,7 @@ module Cradare2
       end
 
       def init : Opal::TEA::Cmd
-        nil
+        Opal::TEA::Cmd.none
       end
 
       property width : Int32 = 100
@@ -47,11 +47,11 @@ module Cradare2
         when Opal::TEA::WindowSizeMsg
           @width = msg.width
           @height = msg.height
-          {self, nil}
+          {self, Opal::TEA::Cmd.none}
         when Opal::TEA::KeyMsg
           handle_key(msg)
         else
-          {self, nil}
+          {self, Opal::TEA::Cmd.none}
         end
       end
 
@@ -75,12 +75,12 @@ module Cradare2
               apply_filter
             end
           end
-          return {self, nil}
+          return {self, Opal::TEA::Cmd.none}
         end
 
         case k
         when "q", "ctrl+c"
-          return {self, Opal::TEA.quit}
+          return {self, Opal::TEA::Cmd.quit}
         when "tab"
           @focus_pane = (@focus_pane == :list ? :code : :list)
         when "1"
@@ -129,7 +129,7 @@ module Cradare2
           end
         end
 
-        {self, nil}
+        {self, Opal::TEA::Cmd.none}
       end
 
       private def apply_filter : Nil
