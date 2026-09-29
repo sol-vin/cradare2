@@ -258,7 +258,7 @@ module Cradare2
                       "0x#{sec.vaddr.to_s(16)}",
                       "#{sec.vsize} B",
                       "#{sec.size} B",
-                      sec.perm
+                      sec.perm || "---"
                     ])
                   end
                 end
