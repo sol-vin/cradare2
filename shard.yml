@@ -1,0 +1,11 @@
+name: cradare2
+version: 0.1.0
+
+authors:
+  - sol-vin <ian@sol.vin>
+
+description: A powerful Crystal library and DSL for controlling radare2 via r2pipe protocols and debugging native binaries & Lapis GDExtensions.
+
+crystal: ">= 1.6.0"
+
+license: MIT
