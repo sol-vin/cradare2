@@ -18,6 +18,10 @@ require "./dsl/analysis"
 require "./dsl/disasm"
 require "./dsl/memory"
 require "./dsl/debugger"
+require "./models/xref"
+require "./models/security_info"
+require "./analysis/memory_classifier"
+require "./models/crash_diagnosis"
 require "./crystal"
 
 module Cradare2
@@ -137,6 +141,26 @@ module Cradare2
       Util::Demangler.demangle(symbol, @transport)
     end
 
+    # Returns cross-references targeting the specified address or symbol (axtj @ <addr>).
+    def xrefs_to(address : UInt64 | Int32 | Int64 | String) : Array(Model::Xref)
+      addr_str = address.is_a?(Int) ? "0x#{address.to_s(16)}" : address
+      cmdj("axtj @ #{addr_str}", as: Array(Model::Xref))
+    rescue
+      [] of Model::Xref
+    end
+
+    # Returns cross-references originating from the specified address or symbol (axfj @ <addr>).
+    def xrefs_from(address : UInt64 | Int32 | Int64 | String) : Array(Model::Xref)
+      addr_str = address.is_a?(Int) ? "0x#{address.to_s(16)}" : address
+      cmdj("axfj @ #{addr_str}", as: Array(Model::Xref))
+    rescue
+      [] of Model::Xref
+    end
+
+    # Evaluates binary security mitigations (ASLR, DEP/NX, Stack Canary, Relocations).
+    def security : Model::SecurityInfo
+      Model::SecurityInfo.from_bin_info(info.bin)
+    end
     # Finds a specific symbol by name or display name.
     def find_symbol(name : String) : Model::Symbol?
       symbols.find { |s| s.name == name || s.display_name == name }

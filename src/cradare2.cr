@@ -10,6 +10,7 @@ require "./cradare2/transport/in_session"
 require "./cradare2/transport/mock"
 require "./cradare2/crystal"
 require "./cradare2/client"
+require "./cradare2/tui/explorer"
 
 module Cradare2
   # Opens a radare2 session.

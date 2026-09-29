@@ -13,6 +13,16 @@ module Cradare2
       getter perm : String? = nil
       getter type : String? = nil
 
+      def initialize(
+        @addr : UInt64 = 0_u64,
+        @addr_end : UInt64 = 0_u64,
+        @perm : String? = nil,
+        @name : String = "",
+        @size : UInt64? = nil,
+        @type : String? = nil,
+      )
+      end
+
       def span : UInt64
         size || (addr_end > addr ? addr_end - addr : 0_u64)
       end

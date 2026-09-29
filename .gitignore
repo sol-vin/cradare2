@@ -11,3 +11,4 @@
 *.so
 *.dylib
 *.tmp
+shard.override.yml

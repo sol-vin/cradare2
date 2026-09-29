@@ -37,6 +37,11 @@ module Cradare2
         @values = registers
       end
 
+      # Returns all captured registers
+      def all_registers : Hash(String, UInt64)
+        @values
+      end
+
       # Fetches any register by name (case-insensitive)
       def [](name : String) : UInt64
         @values[name.downcase]? || @values[name]? || 0_u64

@@ -3,6 +3,8 @@ require "../models/breakpoint"
 require "../models/stack_frame"
 require "../models/memory_map"
 require "../models/thread"
+require "../models/crash_diagnosis"
+require "../analysis/memory_classifier"
 require "../util/demangler"
 
 module Cradare2
@@ -145,6 +147,76 @@ module Cradare2
         pid != nil
       end
 
+      # Returns a memory classifier configured with the currently loaded memory maps.
+      def memory_classifier : Analysis::MemoryClassifier
+        Analysis::MemoryClassifier.new(maps)
+      end
+
+      # Classifies an arbitrary pointer against the debugged process memory maps.
+      def classify_memory(address : UInt64) : Analysis::ClassifiedAddress
+        memory_classifier.classify(address)
+      end
+
+      # Performs deep structural analysis on current CPU registers and memory boundaries.
+      def analyze_registers(regs : Model::Registers? = nil) : Analysis::RegisterAnalysis
+        active_regs = regs || registers
+        memory_classifier.analyze(active_regs)
+      end
+
+      # Generates a structured crash diagnosis with root-cause pattern analysis and remediation steps.
+      def diagnose_crash(
+        regs : Model::Registers? = nil,
+        bt : Array(Model::StackFrame)? = nil
+      ) : Model::CrashDiagnosis
+        active_regs = regs || registers
+        active_bt = bt || backtrace
+        reg_analysis = analyze_registers(active_regs)
+        pc = active_regs.pc
+        probable_cause = reg_analysis.probable_cause
+
+        # Nearest symbol
+        fn_sym : String? = nil
+        begin
+          res = @client.cmd("fd @ 0x#{pc.to_s(16)}").strip
+          fn_sym = Util::Demangler.demangle(res, @client.transport) unless res.empty?
+        rescue
+        end
+
+        # Faulting instruction
+        faulting_instr : Model::Instruction? = nil
+        begin
+          instrs = @client.disasm.instructions(1, at: pc)
+          faulting_instr = instrs.first?
+        rescue
+        end
+
+        # Recommendations based on cause
+        recs = [] of String
+        case probable_cause
+        when :null_dereference
+          recs << "Null pointer dereference: verify pointer is non-null before member access"
+          recs << "In game engines (Godot/Lapis), check #alive? or #check_alive! on entity references"
+        when :null_branch
+          recs << "Execution diverted to null/low memory address (corrupted vtable or null function pointer)"
+        when :wild_jump
+          recs << "Instruction pointer jumped to unmapped memory; check stack integrity or function pointer corruption"
+        when :stack_corruption
+          recs << "Stack pointer corrupted or stack overflow detected; check for infinite recursion or massive stack allocations"
+        when :access_violation
+          recs << "Access violation: attempt to read/write unmapped or protected memory"
+        end
+
+        Model::CrashDiagnosis.new(
+          reason: "Native execution fault at 0x#{pc.to_s(16)}",
+          probable_cause: probable_cause,
+          faulting_address: pc,
+          faulting_instruction: faulting_instr,
+          faulting_symbol: fn_sym,
+          registers: reg_analysis,
+          backtrace: active_bt,
+          recommendations: recs
+        )
+      end
       # Generates a detailed, demangled native crash diagnostic report.
       # Includes crash instruction pointer, active function, faulting memory region,
       # registers dump, and demangled call stack.
