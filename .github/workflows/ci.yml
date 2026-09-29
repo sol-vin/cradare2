@@ -58,6 +58,9 @@ jobs:
         with:
           crystal: ${{ matrix.crystal }}
 
+      - name: Install Shards Dependencies
+        run: shards install
+
       - name: Cache Crystal Cache (Linux / macOS)
         if: runner.os != 'Windows'
         uses: actions/cache@v4
@@ -135,6 +138,9 @@ jobs:
         uses: crystal-lang/install-crystal@v1
         with:
           crystal: 1.21.0
+
+      - name: Install Shards Dependencies
+        run: shards install
 
       - name: Build Crystal Docs
         run: |
