@@ -199,7 +199,7 @@ module Cradare2
                       prefix = (i == @selected_func_idx) ? "▶ " : "  "
                       "#{prefix}0x#{f.offset.to_s(16)} #{f.name}"
                     end
-                    b.list(items: items, selected_index: @selected_func_idx)
+                    b.text(items.join("\n"))
                   end
                 end
 

@@ -221,6 +221,102 @@ describe Cradare2::Model do
       m3.readable?.should be_false
       m3.writable?.should be_false
       m3.executable?.should be_false
+
+      # Verifies from/to alias fallback for addr/addr_end
+      m3.addr.should eq(16384_u64)
+      m3.addr_end.should eq(20480_u64)
+      m3.span.should eq(4096_u64)
+      m3.contains?(16384).should be_true
+      m3.contains?(20479).should be_true
+      m3.contains?(20480).should be_false
+    end
+  end
+
+  describe Cradare2::Model::TelescopeEntry do
+    it "deserializes telescope entry from JSON" do
+      json = "{\"reg\":\"rax\",\"value\":\"0x401000\",\"refstr\":\"sym.main\",\"role\":\"PC\"}"
+      entry = Cradare2::Model::TelescopeEntry.from_json(json)
+      entry.reg.should eq("rax")
+      entry.value.should eq("0x401000")
+      entry.value_u64.should eq(0x401000_u64)
+      entry.refstr.should eq("sym.main")
+      entry.role.should eq("PC")
+    end
+  end
+
+  describe Cradare2::Model::ProcessInfo do
+    it "deserializes process info from JSON" do
+      json = "{\"pid\":4200,\"ppid\":1000,\"uid\":501,\"status\":\"s\",\"path\":\"/usr/bin/python3\",\"current\":true}"
+      p = Cradare2::Model::ProcessInfo.from_json(json)
+      p.pid.should eq(4200)
+      p.ppid.should eq(1000)
+      p.uid.should eq(501)
+      p.status.should eq("s")
+      p.path.should eq("/usr/bin/python3")
+      p.current?.should be_true
+      p.name.should eq("python3")
+    end
+
+    it "handles ProcessInfo without path" do
+      p = Cradare2::Model::ProcessInfo.from_json("{\"pid\":100}")
+      p.pid.should eq(100)
+      p.name.should eq("unknown")
+      p.current?.should be_false
+    end
+  end
+
+  describe "Additional Model Capabilities" do
+    it "verifies Breakpoint model predicates" do
+      bp = Cradare2::Model::Breakpoint.new(
+        raw_addr: 0x401000_u64,
+        size: 4,
+        hw: true,
+        perm: "-w-",
+        cmd: "dr",
+        cond: "rax==1"
+      )
+      bp.address.should eq(0x401000_u64)
+      bp.watchpoint?.should be_true
+      bp.hardware?.should be_true
+      bp.software?.should be_false
+      bp.has_command?.should be_true
+      bp.command.should eq("dr")
+      bp.conditional?.should be_true
+    end
+
+    it "tests individual flag helpers on Registers" do
+      # Test with all 6 flags enabled (CF: 1, PF: 4, ZF: 64, SF: 128, IF: 512, OF: 2048) -> 2757
+      r_all = Cradare2::Model::Registers.new({"eflags" => 2757_u64})
+      r_all.cf?.should be_true
+      r_all.pf?.should be_true
+      r_all.zf?.should be_true
+      r_all.sf?.should be_true
+      r_all.if?.should be_true
+      r_all.of?.should be_true
+
+      # Test with zero flags
+      r_none = Cradare2::Model::Registers.new({"eflags" => 0_u64})
+      r_none.cf?.should be_false
+      r_none.pf?.should be_false
+      r_none.zf?.should be_false
+      r_none.sf?.should be_false
+      r_none.if?.should be_false
+      r_none.of?.should be_false
+    end
+
+    it "tests Thread status predicates" do
+      t_run = Cradare2::Model::Thread.from_json("{\"id\":1,\"status\":\"running\"}")
+      t_run.running?.should be_true
+      t_run.stopped?.should be_false
+
+      t_stop = Cradare2::Model::Thread.from_json("{\"id\":2,\"status\":\"stopped\"}")
+      t_stop.running?.should be_false
+      t_stop.stopped?.should be_true
+    end
+
+    it "formats TelescopeEntry without role" do
+      entry = Cradare2::Model::TelescopeEntry.new("rax", "0x500")
+      entry.to_s.should eq("rax = 0x500")
     end
   end
 end

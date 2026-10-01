@@ -5,6 +5,8 @@ require "../models/stack_frame"
 require "../models/memory_map"
 require "../models/thread"
 require "../models/crash_diagnosis"
+require "../models/telescope"
+require "../models/process_info"
 require "../analysis/memory_classifier"
 require "../util/demangler"
 require "../address"
@@ -16,7 +18,7 @@ module Cradare2
       def initialize(@client : Client)
       end
 
-      private def addr_s(address : UInt64 | Int32 | Int64 | String) : String
+      private def addr_s(address : Address) : String
         case address
         when Int
           "0x#{address.to_s(16)}"
@@ -31,39 +33,215 @@ module Cradare2
         self
       end
 
-      # Steps one single machine instruction (ds).
-      def step : self
-        @client.cmd("ds")
+      # Continues execution back / reverse continue until hitting a breakpoint (dcb).
+      def continue_back : self
+        @client.cmd("dcb")
+        self
+      end
+
+      # Continues execution until reaching the specified target address (dcu).
+      def continue_until(address : Address) : self
+        @client.cmd("dcu #{addr_s(address)}")
+        self
+      end
+
+      # Continues execution until returning from the current function (dcr).
+      def continue_until_ret : self
+        @client.cmd("dcr")
+        self
+      end
+
+      # Continues execution until the next call instruction (dcc).
+      def continue_until_call : self
+        @client.cmd("dcc")
+        self
+      end
+
+      # Continues execution until the next system call (dcs).
+      def continue_until_syscall : self
+        @client.cmd("dcs")
+        self
+      end
+
+      # Steps one or more machine instructions (ds).
+      def step(count : Int32 = 1) : self
+        if count <= 1
+          @client.cmd("ds")
+        else
+          @client.cmd("ds #{count}")
+        end
         self
       end
 
       # Steps over calls or compound instructions (dso).
-      def step_over : self
-        @client.cmd("dso")
+      def step_over(count : Int32 = 1) : self
+        if count <= 1
+          @client.cmd("dso")
+        else
+          @client.cmd("dso #{count}")
+        end
+        self
+      end
+
+      # Steps until exiting current stack frame / function finish (dsf).
+      def step_out : self
+        @client.cmd("dsf")
+        self
+      end
+
+      # Alias for step_out.
+      def finish : self
+        step_out
+      end
+
+      # Steps one or more high-level source lines (dsl).
+      def step_source(lines : Int32 = 1) : self
+        if lines <= 1
+          @client.cmd("dsl")
+        else
+          @client.cmd("dsl #{lines}")
+        end
+        self
+      end
+
+      # Steps back one machine instruction in reversible debugging (dsb).
+      def step_back : self
+        @client.cmd("dsb")
         self
       end
 
       # Continues execution until reaching the specified target address (dsu).
-      def step_until(address : UInt64 | Int32 | Int64 | String) : self
+      def step_until(address : Address) : self
         @client.cmd("dsu #{addr_s(address)}")
         self
       end
 
       # Sets a software breakpoint at the given address or symbol (db).
-      def breakpoint(target : UInt64 | Int32 | Int64 | String) : self
+      def breakpoint(target : Address) : self
         @client.cmd("db #{addr_s(target)}")
         self
       end
 
-      # Removes a breakpoint at the given address or symbol (db-).
-      def remove_breakpoint(target : UInt64 | Int32 | Int64 | String) : self
+      # Sets a hardware execution breakpoint at the given address or symbol (dbH).
+      def hardware_breakpoint(target : Address) : self
+        @client.cmd("dbH #{addr_s(target)}")
+        self
+      end
+
+      # Alias for hardware_breakpoint.
+      def hw_breakpoint(target : Address) : self
+        hardware_breakpoint(target)
+      end
+
+      # Sets a memory watchpoint on read ('r'), write ('w'), or read/write ('rw') access (dbw).
+      def watchpoint(target : Address, access : Symbol = :rw) : self
+        mode = case access
+               when :r, :read
+                 "r"
+               when :w, :write
+                 "w"
+               else
+                 "rw"
+               end
+        @client.cmd("dbw #{addr_s(target)} #{mode}")
+        self
+      end
+
+      # Removes a breakpoint or watchpoint at the given address or symbol (db-).
+      def remove_breakpoint(target : Address) : self
         @client.cmd("db- #{addr_s(target)}")
         self
       end
 
-      # Removes all breakpoints (db-*).
+      # Alias for remove_breakpoint to explicitly remove a watchpoint.
+      def remove_watchpoint(target : Address) : self
+        remove_breakpoint(target)
+      end
+
+      # Removes all breakpoints and watchpoints (db-*).
       def clear_breakpoints : self
         @client.cmd("db-*")
+        self
+      end
+
+      # Enables a breakpoint at the specified target (dbe).
+      def enable_breakpoint(target : Address) : self
+        @client.cmd("dbe #{addr_s(target)}")
+        self
+      end
+
+      # Disables a breakpoint at the specified target without deleting it (dbd).
+      def disable_breakpoint(target : Address) : self
+        @client.cmd("dbd #{addr_s(target)}")
+        self
+      end
+
+      # Enables all breakpoints in the session (dbe*).
+      def enable_all_breakpoints : self
+        @client.cmd("dbe*")
+        self
+      end
+
+      # Disables all breakpoints in the session (dbd*).
+      def disable_all_breakpoints : self
+        @client.cmd("dbd*")
+        self
+      end
+
+      # Toggles a breakpoint at the target address (dbs).
+      def toggle_breakpoint(target : Address) : self
+        @client.cmd("dbs #{addr_s(target)}")
+        self
+      end
+
+      # Assigns a descriptive name or label to a breakpoint (dbn <name> @ <target>).
+      def name_breakpoint(target : Address, name : String) : self
+        @client.cmd("dbn #{name} @ #{addr_s(target)}")
+        self
+      end
+
+      # Sets an expression condition on a breakpoint (dbx <condition> @ <target>).
+      def set_breakpoint_condition(target : Address, condition : String) : self
+        @client.cmd("dbx #{condition} @ #{addr_s(target)}")
+        self
+      end
+
+      # Sets a software breakpoint with an associated condition expression.
+      def conditional_breakpoint(target : Address, condition : String) : self
+        breakpoint(target)
+        set_breakpoint_condition(target, condition)
+        self
+      end
+
+      # Sets a command to execute when hitting a breakpoint (dbc).
+      def set_breakpoint_command(target : Address, command : String) : self
+        @client.cmd("dbc #{addr_s(target)} #{command}")
+        self
+      end
+
+      # Sets a tracepoint / logpoint that executes a command upon hit and immediately continues execution without stopping (dbC).
+      def tracepoint(target : Address, command : String) : self
+        breakpoint(target)
+        @client.cmd("dbC #{addr_s(target)} #{command}")
+        self
+      end
+
+      # Alias for tracepoint.
+      def logpoint(target : Address, command : String) : self
+        tracepoint(target, command)
+      end
+
+      # Sets a breakpoint at a source code file and line number.
+      # If mapped in Crystal/DWARF line metadata, resolves the target address; otherwise falls back to `dbl file:line`.
+      def breakpoint_at_source(file : String, line : Int32) : self
+        begin
+          mappings = @client.crystal.lines.for_line(file, line)
+          if first_mapping = mappings.first?
+            return breakpoint(first_mapping.address)
+          end
+        rescue
+        end
+        @client.cmd("dbl #{file}:#{line}")
         self
       end
 
@@ -74,6 +252,35 @@ module Cradare2
         [] of Model::Breakpoint
       end
 
+      # Finds an active breakpoint located at the specified address.
+      def find_breakpoint(target : Address) : Model::Breakpoint?
+        target_u64 = AddressUtils.to_u64?(target)
+        target_s = addr_s(target)
+        breakpoints.find do |bp|
+          (target_u64 && bp.address == target_u64) || bp.name == target_s
+        end
+      end
+
+      # Checks whether a breakpoint is active at the specified address.
+      def breakpoint_at?(target : Address) : Bool
+        !find_breakpoint(target).nil?
+      end
+
+      # Returns only software execution breakpoints.
+      def software_breakpoints : Array(Model::Breakpoint)
+        breakpoints.select(&.software?)
+      end
+
+      # Returns only hardware breakpoints.
+      def hardware_breakpoints : Array(Model::Breakpoint)
+        breakpoints.select(&.hardware?)
+      end
+
+      # Returns only memory watchpoints.
+      def watchpoints : Array(Model::Breakpoint)
+        breakpoints.select(&.watchpoint?)
+      end
+
       # Returns current CPU registers as a strongly typed `Registers` model.
       def registers : Model::Registers
         @client.cmdj("drj", as: Model::Registers)
@@ -81,10 +288,39 @@ module Cradare2
         Model::Registers.new
       end
 
+      # Reads a single register value by name.
+      def register(name : String) : UInt64
+        registers[name]
+      end
+
       # Sets a register to a specific value (e.g. set_register("rax", 0x1234)).
       def set_register(name : String, value : UInt64) : self
         @client.cmd("dr #{name}=0x#{value.to_s(16)}")
         self
+      end
+
+      # Inspects telescoping pointer references for all registers (drrj).
+      def telescope : Array(Model::TelescopeEntry)
+        @client.cmdj("drrj", as: Array(Model::TelescopeEntry))
+      rescue
+        [] of Model::TelescopeEntry
+      end
+
+      # Pushes / takes a snapshot of current register states (drs+).
+      def snapshot_registers : self
+        @client.cmd("drs+")
+        self
+      end
+
+      # Pops / restores register states from the previous snapshot (drs-).
+      def restore_registers : self
+        @client.cmd("drs-")
+        self
+      end
+
+      # Compares current CPU registers against a baseline Registers snapshot.
+      def diff_registers(baseline : Model::Registers) : Hash(String, Tuple(UInt64, UInt64))
+        registers.diff(baseline)
       end
 
       # Returns the call stack / backtrace frames (dbtj).
@@ -172,6 +408,67 @@ module Cradare2
         @client.cmdj("dptj", as: Array(Model::Thread))
       rescue
         [] of Model::Thread
+      end
+
+      # Returns the currently selected thread in the debugger.
+      def current_thread : Model::Thread?
+        threads.find(&.selected?)
+      end
+
+      # Returns the currently active thread ID (dpt.).
+      def current_thread_id : Int32?
+        res = @client.cmd("dpt.").strip
+        res.to_i?
+      end
+
+      # Attaches or switches focus to a specific thread ID (dpt=<tid>).
+      def select_thread(tid : Int32) : self
+        @client.cmd("dpt=#{tid}")
+        self
+      end
+
+      # Returns a list of attachable / running system processes (dplj).
+      def attachable_processes : Array(Model::ProcessInfo)
+        @client.cmdj("dplj", as: Array(Model::ProcessInfo))
+      rescue
+        [] of Model::ProcessInfo
+      end
+
+      # Returns the path to the executable of the debugged process (dpe).
+      def executable_path : String
+        @client.cmd("dpe").strip
+      end
+
+      # Reads `count` 64-bit words directly from the current Stack Pointer (SP).
+      def stack_words(count : Int32 = 8) : Array(UInt64)
+        sp_addr = registers.sp
+        return [] of UInt64 if sp_addr == 0_u64
+        @client.memory.read_pointer_array(sp_addr, count)
+      end
+
+      # Changes memory page protection permissions at target address (dmp <addr> <size> <perms>).
+      def protect_memory(target : Address, size : Int32, perms : String) : self
+        @client.cmd("dmp #{addr_s(target)} #{size} #{perms}")
+        self
+      end
+
+      # Allocates a memory region of the given size in the debugged process (dm <addr> <size>).
+      def allocate_memory(size : Int32, address : Address? = nil) : self
+        addr_part = address ? addr_s(address) : "-1"
+        @client.cmd("dm #{addr_part} #{size}")
+        self
+      end
+
+      # Deallocates a memory region at the given address in the debugged process (dm- <addr>).
+      def deallocate_memory(target : Address) : self
+        @client.cmd("dm- #{addr_s(target)}")
+        self
+      end
+
+      # Dumps a debug memory region to a file on disk (dmd).
+      def dump_memory_region(path : String) : self
+        @client.cmd("dmd #{path}")
+        self
       end
 
       # Attaches to a running process by PID.

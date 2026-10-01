@@ -177,6 +177,112 @@ module Cradare2
       def eflags : UInt64
         self["eflags"]? || self["rflags"]? || 0_u64
       end
+
+      # Carry Flag (CF, bit 0)
+      def carry_flag? : Bool
+        (eflags & 0x01_u64) != 0
+      end
+
+      def cf? : Bool
+        carry_flag?
+      end
+
+      # Parity Flag (PF, bit 2)
+      def parity_flag? : Bool
+        (eflags & 0x04_u64) != 0
+      end
+
+      def pf? : Bool
+        parity_flag?
+      end
+
+      # Zero Flag (ZF, bit 6)
+      def zero_flag? : Bool
+        (eflags & 0x40_u64) != 0
+      end
+
+      def zf? : Bool
+        zero_flag?
+      end
+
+      # Sign Flag (SF, bit 7)
+      def sign_flag? : Bool
+        (eflags & 0x80_u64) != 0
+      end
+
+      def sf? : Bool
+        sign_flag?
+      end
+
+      # Interrupt Flag (IF, bit 9)
+      def interrupt_flag? : Bool
+        (eflags & 0x200_u64) != 0
+      end
+
+      def if? : Bool
+        interrupt_flag?
+      end
+
+      # Overflow Flag (OF, bit 11)
+      def overflow_flag? : Bool
+        (eflags & 0x800_u64) != 0
+      end
+
+      def of? : Bool
+        overflow_flag?
+      end
+
+      # ARM registers
+      def lr : UInt64
+        self["lr"]? || self["x30"]? || self["r14"]? || 0_u64
+      end
+
+      def r0 : UInt64
+        self["r0"]? || self["x0"]? || 0_u64
+      end
+
+      def r1 : UInt64
+        self["r1"]? || self["x1"]? || 0_u64
+      end
+
+      def r2 : UInt64
+        self["r2"]? || self["x2"]? || 0_u64
+      end
+
+      def r3 : UInt64
+        self["r3"]? || self["x3"]? || 0_u64
+      end
+
+      def r4 : UInt64
+        self["r4"]? || self["x4"]? || 0_u64
+      end
+
+      def r5 : UInt64
+        self["r5"]? || self["x5"]? || 0_u64
+      end
+
+      def r6 : UInt64
+        self["r6"]? || self["x6"]? || 0_u64
+      end
+
+      def r7 : UInt64
+        self["r7"]? || self["x7"]? || 0_u64
+      end
+
+      # Compares this register snapshot against a baseline, returning a mapping of
+      # register_name => {old_value, new_value} for only registers whose values changed.
+      def diff(baseline : Registers) : Hash(String, Tuple(UInt64, UInt64))
+        changed = Hash(String, Tuple(UInt64, UInt64)).new
+        all_keys = (@values.keys + baseline.all_registers.keys).uniq
+        all_keys.each do |k|
+          val_old = baseline[k]? || 0_u64
+          val_new = self[k]? || 0_u64
+          if val_old != val_new
+            changed[k] = {val_old, val_new}
+          end
+        end
+        changed
+      end
     end
   end
 end

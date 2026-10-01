@@ -16,6 +16,8 @@ require "./models/memory_map"
 require "./models/module_info"
 require "./models/flag"
 require "./models/thread"
+require "./models/telescope"
+require "./models/process_info"
 require "./util/demangler"
 require "./models/xref"
 require "./models/security_info"
@@ -403,10 +405,78 @@ module Cradare2
       self
     end
 
-    # Removes a software breakpoint at the given address or symbol.
+    # Sets a hardware breakpoint at the given address or symbol.
+    def hardware_breakpoint(target : Address) : self
+      debug.hardware_breakpoint(target)
+      self
+    end
+
+    # Sets a memory watchpoint on read/write/rw access.
+    def watchpoint(target : Address, access : Symbol = :rw) : self
+      debug.watchpoint(target, access)
+      self
+    end
+
+    # Removes a software or hardware breakpoint at the given address or symbol.
     def remove_breakpoint(target : Address) : self
       debug.remove_breakpoint(target)
       self
+    end
+
+    # Removes a memory watchpoint at the given address or symbol.
+    def remove_watchpoint(target : Address) : self
+      debug.remove_watchpoint(target)
+      self
+    end
+
+    # Clears all breakpoints and watchpoints.
+    def clear_breakpoints : self
+      debug.clear_breakpoints
+      self
+    end
+
+    # Returns active breakpoints.
+    def breakpoints : Array(Model::Breakpoint)
+      debug.breakpoints
+    end
+
+    # Continues execution of the debugged process.
+    def continue : self
+      debug.continue
+      self
+    end
+
+    # Steps one single machine instruction (or count instructions).
+    def step(count : Int32 = 1) : self
+      debug.step(count)
+      self
+    end
+
+    # Steps over calls or compound instructions.
+    def step_over(count : Int32 = 1) : self
+      debug.step_over(count)
+      self
+    end
+
+    # Steps out until exiting current stack frame.
+    def step_out : self
+      debug.step_out
+      self
+    end
+
+    # Returns current CPU registers.
+    def registers : Model::Registers
+      debug.registers
+    end
+
+    # Returns call stack backtrace frames.
+    def backtrace : Array(Model::StackFrame)
+      debug.backtrace
+    end
+
+    # Diagnoses execution crash.
+    def diagnose_crash : Model::CrashDiagnosis
+      debug.diagnose_crash
     end
 
     # Returns loaded binary modules in the target process.
