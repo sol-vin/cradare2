@@ -1,3 +1,4 @@
+require "../models/module_info"
 require "../models/register"
 require "../models/breakpoint"
 require "../models/stack_frame"
@@ -6,6 +7,7 @@ require "../models/thread"
 require "../models/crash_diagnosis"
 require "../analysis/memory_classifier"
 require "../util/demangler"
+require "../address"
 
 module Cradare2
   module DSL
@@ -106,6 +108,64 @@ module Cradare2
         [] of Model::MemoryMap
       end
 
+      # Returns loaded PE/ELF/Mach-O binary modules in the debugged process (dmmj, with fallback to grouped dmj).
+      def modules : Array(Model::ModuleInfo)
+        begin
+          res = @client.cmdj("dmmj", as: Array(Model::ModuleInfo))
+          return res unless res.empty?
+        rescue
+        end
+
+        group_maps_by_module(maps)
+      end
+
+      # Returns the loaded binary module containing the specified address, or nil if unmapped.
+      def module_at(address : Address) : Model::ModuleInfo?
+        addr_u64 = AddressUtils.to_u64?(address)
+        return nil unless addr_u64
+        modules.find { |mod| mod.contains?(addr_u64) }
+      end
+
+      # Returns the base load address of a specific loaded module by name (e.g. "game.dll" or "godot.exe").
+      def base_address_of(module_name : String) : UInt64?
+        clean_name = module_name.downcase
+        matching = modules.find do |m|
+          m.name.downcase == clean_name ||
+            File.basename(m.name).downcase == clean_name ||
+            m.name.downcase.includes?(clean_name)
+        end
+        matching.try(&.base_address)
+      end
+
+      private def group_maps_by_module(all_maps : Array(Model::MemoryMap)) : Array(Model::ModuleInfo)
+        named_maps = all_maps.reject { |m| m.name.empty? || m.name.starts_with?('[') || m.name == "null" }
+        return [] of Model::ModuleInfo if named_maps.empty?
+
+        grouped = Hash(String, Array(Model::MemoryMap)).new
+        named_maps.each do |m|
+          base_key = File.basename(m.name)
+          grouped[base_key] ||= Array(Model::MemoryMap).new
+          grouped[base_key] << m
+        end
+
+        modules_list = [] of Model::ModuleInfo
+        grouped.each do |mod_name, reg_list|
+          base_addr = reg_list.min_of(&.addr)
+          end_addr = reg_list.max_of(&.addr_end)
+          full_path = reg_list.first.name
+          mod = Model::ModuleInfo.new(
+            name: mod_name,
+            base_address: base_addr,
+            end_address: end_addr,
+            size: end_addr > base_addr ? end_addr - base_addr : 0_u64,
+            path: full_path,
+            regions: reg_list
+          )
+          modules_list << mod
+        end
+        modules_list.sort_by(&.base_address)
+      end
+
       # Returns active threads in the process (dptj).
       def threads : Array(Model::Thread)
         @client.cmdj("dptj", as: Array(Model::Thread))
@@ -148,17 +208,17 @@ module Cradare2
       end
 
       # Returns a memory classifier configured with the currently loaded memory maps.
-      def memory_classifier : Analysis::MemoryClassifier
-        Analysis::MemoryClassifier.new(maps)
+      def memory_classifier : Cradare2::Analysis::MemoryClassifier
+        Cradare2::Analysis::MemoryClassifier.new(maps)
       end
 
       # Classifies an arbitrary pointer against the debugged process memory maps.
-      def classify_memory(address : UInt64) : Analysis::ClassifiedAddress
+      def classify_memory(address : UInt64) : Cradare2::Analysis::ClassifiedAddress
         memory_classifier.classify(address)
       end
 
       # Performs deep structural analysis on current CPU registers and memory boundaries.
-      def analyze_registers(regs : Model::Registers? = nil) : Analysis::RegisterAnalysis
+      def analyze_registers(regs : Model::Registers? = nil) : Cradare2::Analysis::RegisterAnalysis
         active_regs = regs || registers
         memory_classifier.analyze(active_regs)
       end

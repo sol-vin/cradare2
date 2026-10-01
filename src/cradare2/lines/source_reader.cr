@@ -5,10 +5,23 @@ module Cradare2
       # In-memory file cache: Normalized Path => Array of lines
       @cache = Hash(String, Array(String)).new
       getter search_paths : Array(String)
+      getter path_mappings : Hash(String, String) = Hash(String, String).new
 
       def initialize(search_paths : Array(String) = [] of String)
         @search_paths = search_paths.map { |p| normalize_path(p) }
         @search_paths << normalize_path(Dir.current) unless @search_paths.includes?(normalize_path(Dir.current))
+      end
+
+      # Configures a path prefix substitution rule (e.g. from container /build/src to local C:/dev/src).
+      def map_path(remote_prefix : String, local_prefix : String) : self
+        @path_mappings[remote_prefix.gsub('\\', '/')] = local_prefix.gsub('\\', '/')
+        self
+      end
+
+      # Clears all path substitution mappings.
+      def clear_mappings : self
+        @path_mappings.clear
+        self
       end
 
       # Adds an in-memory virtual source file (useful for mocking, tests, or slurped source).
@@ -113,13 +126,24 @@ module Cradare2
       # Attempts to find the file either as an absolute path, relative to current dir,
       # or relative to one of the configured `search_paths`.
       def resolve_path(file : String) : String?
+        norm = file.gsub('\\', '/')
+
+        # Check path remapping prefix substitutions first
+        @path_mappings.each do |remote, local|
+          if norm.starts_with?(remote)
+            remapped = norm.sub(remote, local)
+            if File.file?(remapped)
+              return File.expand_path(remapped)
+            end
+          end
+        end
+
         # Direct check
         if File.file?(file)
           return File.expand_path(file)
         end
 
         # Check relative to search paths
-        norm = file.gsub('\\', '/')
         @search_paths.each do |base|
           candidate = File.join(base, norm)
           if File.file?(candidate)

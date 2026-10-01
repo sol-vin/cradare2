@@ -90,4 +90,46 @@ describe Cradare2::Client do
     client = Cradare2.mock
     client.demangle("*MyClass#my_method:Int32").should eq("MyClass#my_method:Int32")
   end
+
+  it "executes batch commands" do
+    client = SpecFixtures.build_mock_client
+    res = client.batch(["s", "s 0x401000"])
+    res.size.should eq(2)
+    res["s"].should eq("4198400")
+  end
+
+  it "records command execution telemetry via on_command hooks" do
+    client = SpecFixtures.build_mock_client
+    logged_cmds = [] of String
+    client.on_command do |cmd, dur, success|
+      logged_cmds << cmd
+      success.should be_true
+      dur.total_milliseconds.should be >= 0
+    end
+
+    client.cmd("s")
+    logged_cmds.should eq(["s"])
+  end
+
+  it "provides top-level delegation shortcuts" do
+    client = SpecFixtures.build_mock_client
+    client.disassemble(2).size.should eq(2)
+    client.read(0x401000_u64, 4).should eq(Bytes[144, 144, 144, 144])
+    client.breakpoint(0x401000_u64).should eq(client)
+    client.remove_breakpoint(0x401000_u64).should eq(client)
+  end
+
+  it "propagates fatal transport errors rather than silently swallowing them" do
+    client = SpecFixtures.build_mock_with_handler do |_|
+      raise Cradare2::SessionClosedError.new("Session closed")
+    end
+
+    expect_raises(Cradare2::SessionClosedError) do
+      client.functions
+    end
+
+    expect_raises(Cradare2::SessionClosedError) do
+      client.symbols
+    end
+  end
 end

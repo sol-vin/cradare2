@@ -23,7 +23,7 @@ module Cradare2
 
           response = @input.gets('\0', chomp: true)
           if response.nil?
-            raise TransportError.new("Unexpected EOF while reading radare2 response")
+            raise ProcessTerminatedError.new("Unexpected EOF while reading radare2 response")
           end
           response
         end

@@ -1,5 +1,6 @@
 require "./transport"
 require "../util/locator"
+require "../error"
 
 module Cradare2
   module Transport
@@ -79,23 +80,83 @@ module Cradare2
       end
 
       private def read_response : String
-        response = @output.gets('\0', chomp: true)
-        if response.nil?
-          raise TransportError.new("Unexpected EOF while reading radare2 response (process may have crashed or exited)")
+        if span = @timeout
+          channel = Channel(Tuple(String?, Exception?)).new(1)
+          spawn do
+            begin
+              res = @output.gets('\0', chomp: true)
+              channel.send({res, nil})
+            rescue ex
+              channel.send({nil, ex})
+            end
+          end
+
+          select
+          when result = channel.receive
+            str, err = result
+            raise err if err
+            if str.nil?
+              err_diag = read_stderr_diagnostic
+              raise ProcessTerminatedError.new("Unexpected EOF while reading radare2 response (process may have crashed or exited)#{err_diag}")
+            end
+            str
+          when timeout(span)
+            raise TimeoutError.new("Radare2 command timed out after #{span.total_seconds} seconds")
+          end
+        else
+          response = @output.gets('\0', chomp: true)
+          if response.nil?
+            err_diag = read_stderr_diagnostic
+            raise ProcessTerminatedError.new("Unexpected EOF while reading radare2 response (process may have crashed or exited)#{err_diag}")
+          end
+          response
         end
-        response
-      rescue ex : TransportError
+      rescue ex : TransportError | TimeoutError
         raise ex
       rescue ex
         raise TransportError.new("Error reading response from radare2: #{ex.message}", cause: ex)
       end
 
       private def read_handshake : Nil
-        # Read the initial startup null byte delimiter
-        initial = @output.gets('\0', chomp: true)
+        initial = if span = @timeout
+                    channel = Channel(Tuple(String?, Exception?)).new(1)
+                    spawn do
+                      begin
+                        res = @output.gets('\0', chomp: true)
+                        channel.send({res, nil})
+                      rescue ex
+                        channel.send({nil, ex})
+                      end
+                    end
+
+                    select
+                    when result = channel.receive
+                      str, err = result
+                      raise err if err
+                      str
+                    when timeout(span)
+                      raise TimeoutError.new("Startup handshake timed out after #{span.total_seconds} seconds")
+                    end
+                  else
+                    @output.gets('\0', chomp: true)
+                  end
+
         if initial.nil?
-          raise TransportError.new("Failed to receive initial startup handshake from radare2 process")
+          err_diag = read_stderr_diagnostic
+          raise ProcessTerminatedError.new("Failed to receive initial startup handshake from radare2 process#{err_diag}")
         end
+      end
+
+      private def read_stderr_diagnostic : String
+        if err_io = @error
+          begin
+            # Read whatever error output is currently available without blocking
+            err_text = err_io.gets_to_end.strip
+            return "\nRadare2 stderr:\n#{err_text}" unless err_text.empty?
+          rescue
+          end
+        end
+        ""
       end
 
       private def cleanup_process : Nil
@@ -115,7 +176,6 @@ module Cradare2
         end
 
         begin
-          # Wait briefly for process to exit cleanly
           if @process.exists?
             @process.wait
           end
@@ -133,7 +193,7 @@ module Cradare2
           args: args,
           input: Process::Redirect::Pipe,
           output: Process::Redirect::Pipe,
-          error: Process::Redirect::Close
+          error: Process::Redirect::Pipe
         )
       rescue ex
         raise TransportError.new("Failed to spawn radare2 process (#{bin}): #{ex.message}", cause: ex)

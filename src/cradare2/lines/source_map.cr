@@ -11,6 +11,8 @@ module Cradare2
       getter file_to_lines : Hash(String, Hash(Int32, Array(InstructionMapping))) = Hash(String, Hash(Int32, Array(InstructionMapping))).new
       getter reader : SourceReader
       @registered_files : Set(String) = Set(String).new
+      @sorted_addresses : Array(UInt64) = [] of UInt64
+      @index_dirty : Bool = false
 
       def initialize(@reader : SourceReader = SourceReader.new)
       end
@@ -33,6 +35,7 @@ module Cradare2
         mapping = InstructionMapping.new(address, size, opcode, bytes || "", location, function_name)
 
         @address_to_instruction[address] = mapping
+        @index_dirty = true
 
         norm_file = normalize_file(file)
         lines_hash = @file_to_lines[norm_file] ||= Hash(Int32, Array(InstructionMapping)).new
@@ -56,6 +59,8 @@ module Cradare2
         @address_to_instruction.clear
         @file_to_lines.clear
         @registered_files.clear
+        @sorted_addresses.clear
+        @index_dirty = false
       end
 
       # Returns the number of mapped instructions.
@@ -79,19 +84,37 @@ module Cradare2
       end
 
       # Finds the instruction matching or containing the given address (within instruction size range).
+      # Performs an O(log N) binary search over sorted address intervals.
       def find_instruction_containing(address : UInt64) : InstructionMapping?
         if exact = @address_to_instruction[address]?
           return exact
         end
 
-        # Check if address falls within [ins.address, ins.address + ins.size)
-        @address_to_instruction.each_value do |ins|
-          if ins.size > 0 && address >= ins.address && address < (ins.address + ins.size)
+        return nil if @address_to_instruction.empty?
+
+        ensure_sorted_index
+
+        # Find largest instruction address <= address
+        idx = @sorted_addresses.bsearch_index { |addr| addr > address }
+        cand_idx = idx ? idx - 1 : @sorted_addresses.size - 1
+        return nil if cand_idx < 0
+
+        cand_addr = @sorted_addresses[cand_idx]
+        if ins = @address_to_instruction[cand_addr]?
+          effective_size = Math.max(1, ins.size)
+          if address >= ins.address && address < (ins.address + effective_size.to_u64)
             return ins
           end
         end
 
         nil
+      end
+
+      private def ensure_sorted_index : Nil
+        if @index_dirty
+          @sorted_addresses = @address_to_instruction.keys.sort
+          @index_dirty = false
+        end
       end
 
       # Finds all instructions generated for a given file and line number.

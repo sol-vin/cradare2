@@ -8,7 +8,7 @@ module Cradare2
     # register forensics, root-cause pattern analysis, and actionable remediation advice.
     struct CrashDiagnosis
       getter reason : String
-      getter probable_cause : Symbol
+      getter probable_cause : ::Symbol
       getter faulting_address : UInt64
       getter faulting_instruction : Instruction?
       getter faulting_symbol : String?
@@ -18,7 +18,7 @@ module Cradare2
 
       def initialize(
         @reason : String,
-        @probable_cause : Symbol,
+        @probable_cause : ::Symbol,
         @faulting_address : UInt64,
         @faulting_instruction : Instruction?,
         @faulting_symbol : String?,

@@ -73,6 +73,16 @@ describe Cradare2::DSL do
       client.memory.read_u64(0x401000).should eq(0x0807060504030201_u64)
       client.memory.read_string(0x401000).should eq("Hello World")
       client.memory.hexdump(0x401000, size: 16).should contain("0x00401000")
+
+      mock.on("ps 256 @ 0x401000", "Node2D")
+      client.memory.read_cstring(0x401000).should eq("Node2D")
+      client.read_cstring(0x401000).should eq("Node2D")
+
+      # Pointer array
+      mock.on("pxj 16 @ 0x401000", "[0, 16, 64, 0, 0, 0, 0, 0, 16, 16, 64, 0, 0, 0, 0, 0]") # 0x401000, 0x401010
+      ptrs = client.memory.read_pointer_array(0x401000, 2)
+      ptrs.should eq([0x401000_u64, 0x401010_u64])
+      client.read_pointer_array(0x401000, 2).should eq([0x401000_u64, 0x401010_u64])
     end
 
     it "writes bytes, strings, and integers" do

@@ -3,24 +3,40 @@ module Cradare2
     # Demangler for Crystal, C++, and Rust symbol names, with full support for
     # LLVM/MSVC PDB hex-escaped symbols, operator overloads, and generic types.
     module Demangler
+      MAX_CACHE_ENTRIES = 50_000
       @@cache = Hash(String, String).new
+      @@mutex = Mutex.new
 
       # Demangles a symbol name. If an optional radare2 command runner is given,
       # it can query radare2's built-in demangler (`?m`) for C++/Rust/MSVC symbols.
       def self.demangle(symbol : String, client : Transport::Base? = nil) : String
         return symbol if symbol.empty?
-        if cached = @@cache[symbol]?
-          return cached
+
+        @@mutex.synchronize do
+          if cached = @@cache[symbol]?
+            return cached
+          end
         end
 
         demangled = demangle_internal(symbol, client)
-        @@cache[symbol] = demangled
+
+        @@mutex.synchronize do
+          if @@cache.size >= MAX_CACHE_ENTRIES
+            @@cache.clear
+          end
+          @@cache[symbol] = demangled
+        end
         demangled
+      end
+
+      # Returns the number of cached demangled symbols.
+      def self.cache_size : Int32
+        @@mutex.synchronize { @@cache.size }
       end
 
       # Clears the demangling cache.
       def self.clear_cache : Nil
-        @@cache.clear
+        @@mutex.synchronize { @@cache.clear }
       end
 
       private def self.demangle_internal(symbol : String, client : Transport::Base?) : String

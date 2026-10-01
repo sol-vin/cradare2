@@ -7,6 +7,10 @@ module Cradare2
   class TransportError < Error
   end
 
+  # Raised when the child radare2 process exits or crashes unexpectedly.
+  class ProcessTerminatedError < TransportError
+  end
+
   # Raised when radare2 or r2 executable cannot be located on the system.
   class BinaryNotFoundError < TransportError
   end
@@ -25,5 +29,17 @@ module Cradare2
 
   # Raised when an operation or command execution times out.
   class TimeoutError < Error
+  end
+
+  # Raised when symbol resolution fails.
+  class SymbolResolutionError < Error
+  end
+
+  # Raised when reading or decoding runtime memory layouts fails.
+  class MemoryInspectionError < Error
+  end
+
+  # Raised when defining or printing custom radare2 types/formats fails.
+  class TypeDefinitionError < Error
   end
 end

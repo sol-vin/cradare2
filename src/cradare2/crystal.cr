@@ -3,6 +3,7 @@ require "./models/symbol"
 require "./models/stack_frame"
 require "./util/demangler"
 require "./lines/line_helper"
+require "./address"
 
 module Cradare2
   # Crystal-specific binary analysis, memory layout inspection, and debugging tools.
@@ -75,6 +76,40 @@ module Cradare2
         @size : Int32,
         @read_only : Bool,
         @pointer_address : UInt64,
+      )
+      end
+    end
+
+    # Struct representing a Crystal `Fiber` reference in target memory (64-bit).
+    struct CrystalFiber
+      getter address : UInt64
+      getter type_id : Int32
+      getter stack_address : UInt64
+      getter stack_size : Int32
+      getter resumable : Bool
+
+      def initialize(
+        @address : UInt64,
+        @type_id : Int32,
+        @stack_address : UInt64,
+        @stack_size : Int32,
+        @resumable : Bool,
+      )
+      end
+    end
+
+    # Struct representing a Crystal `Hash(K, V)` header in target memory (64-bit).
+    struct CrystalHashHeader
+      getter address : UInt64
+      getter type_id : Int32
+      getter size : Int32
+      getter capacity : Int32
+
+      def initialize(
+        @address : UInt64,
+        @type_id : Int32,
+        @size : Int32,
+        @capacity : Int32,
       )
       end
     end
@@ -213,15 +248,17 @@ module Cradare2
     end
 
     # Reads the 4-byte `type_id` of a Crystal reference object at `address`.
-    def read_type_id(address : UInt64) : Int32
-      @client.memory.read_i32(address)
+    def read_type_id(address : Address) : Int32
+      addr_u64 = AddressUtils.to_u64(address)
+      @client.memory.read_i32(addr_u64)
     end
 
     # Inspects and reads a Crystal `String` from memory at `address`.
-    def read_string(address : UInt64, max_bytes : Int32 = 1048576) : CrystalString
-      type_id = @client.memory.read_i32(address)
-      bytesize = @client.memory.read_i32(address + 4)
-      length = @client.memory.read_i32(address + 8)
+    def read_string(address : Address, max_bytes : Int32 = 1048576) : CrystalString
+      addr_u64 = AddressUtils.to_u64(address)
+      type_id = @client.memory.read_i32(addr_u64)
+      bytesize = @client.memory.read_i32(addr_u64 + 4)
+      length = @client.memory.read_i32(addr_u64 + 8)
 
       # Bound bytesize to avoid massive allocations on corrupted/unmapped memory
       safe_bytes = if bytesize < 0
@@ -233,13 +270,13 @@ module Cradare2
                    end
 
       val_bytes = if safe_bytes > 0
-                    @client.memory.read_bytes(address + 12, safe_bytes)
+                    @client.memory.read_bytes(addr_u64 + 12, safe_bytes)
                   else
                     Bytes.empty
                   end
 
       CrystalString.new(
-        address: address,
+        address: addr_u64,
         type_id: type_id,
         bytesize: bytesize,
         length: length,
@@ -248,19 +285,20 @@ module Cradare2
     end
 
     # Convenience method to read just the UTF-8 String value of a Crystal `String` at `address`.
-    def read_string_value(address : UInt64, max_bytes : Int32 = 1048576) : String
+    def read_string_value(address : Address, max_bytes : Int32 = 1048576) : String
       read_string(address, max_bytes).value
     end
 
     # Inspects and reads a Crystal `Array(T)` header from memory at `address`.
-    def read_array_header(address : UInt64) : CrystalArrayHeader
-      type_id = @client.memory.read_i32(address)
-      size = @client.memory.read_i32(address + 4)
-      capacity = @client.memory.read_i32(address + 8)
-      buf_addr = @client.memory.read_u64(address + 16)
+    def read_array_header(address : Address) : CrystalArrayHeader
+      addr_u64 = AddressUtils.to_u64(address)
+      type_id = @client.memory.read_i32(addr_u64)
+      size = @client.memory.read_i32(addr_u64 + 4)
+      capacity = @client.memory.read_i32(addr_u64 + 8)
+      buf_addr = @client.memory.read_u64(addr_u64 + 16)
 
       CrystalArrayHeader.new(
-        address: address,
+        address: addr_u64,
         type_id: type_id,
         size: size,
         capacity: capacity,
@@ -269,16 +307,49 @@ module Cradare2
     end
 
     # Inspects and reads a Crystal `Slice(T)` struct header from memory at `address`.
-    def read_slice_header(address : UInt64) : CrystalSliceHeader
-      size = @client.memory.read_i32(address)
-      ro_byte = @client.memory.read_u8(address + 4)
-      ptr = @client.memory.read_u64(address + 8)
+    def read_slice_header(address : Address) : CrystalSliceHeader
+      addr_u64 = AddressUtils.to_u64(address)
+      size = @client.memory.read_i32(addr_u64)
+      ro_byte = @client.memory.read_u8(addr_u64 + 4)
+      ptr = @client.memory.read_u64(addr_u64 + 8)
 
       CrystalSliceHeader.new(
-        address: address,
+        address: addr_u64,
         size: size,
         read_only: ro_byte != 0,
         pointer_address: ptr
+      )
+    end
+
+    # Inspects and reads a Crystal `Fiber` struct from memory at `address`.
+    def read_fiber(address : Address) : CrystalFiber
+      addr_u64 = AddressUtils.to_u64(address)
+      type_id = @client.memory.read_i32(addr_u64)
+      resumable = @client.memory.read_u8(addr_u64 + 4) != 0
+      stack_size = @client.memory.read_i32(addr_u64 + 8)
+      stack_addr = @client.memory.read_u64(addr_u64 + 16)
+
+      CrystalFiber.new(
+        address: addr_u64,
+        type_id: type_id,
+        stack_address: stack_addr,
+        stack_size: stack_size,
+        resumable: resumable
+      )
+    end
+
+    # Inspects and reads a Crystal `Hash(K, V)` header from memory at `address`.
+    def read_hash_header(address : Address) : CrystalHashHeader
+      addr_u64 = AddressUtils.to_u64(address)
+      type_id = @client.memory.read_i32(addr_u64)
+      size = @client.memory.read_i32(addr_u64 + 4)
+      capacity = @client.memory.read_i32(addr_u64 + 8)
+
+      CrystalHashHeader.new(
+        address: addr_u64,
+        type_id: type_id,
+        size: size,
+        capacity: capacity
       )
     end
 

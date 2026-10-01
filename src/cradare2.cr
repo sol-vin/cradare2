@@ -1,5 +1,7 @@
 require "./cradare2/version"
 require "./cradare2/error"
+require "./cradare2/address"
+require "./cradare2/options"
 require "./cradare2/util/locator"
 require "./cradare2/util/demangler"
 require "./cradare2/transport/transport"
@@ -18,12 +20,37 @@ require "./cradare2/client"
 require "./cradare2/tui/explorer"
 
 module Cradare2
-  # Opens a radare2 session.
+  # Opens a radare2 session using an `Options` struct.
+  def self.open(options : Options) : Client
+    transport = build_transport(
+      options.target,
+      options.flags,
+      options.debug,
+      options.write,
+      options.r2_path,
+      options.timeout
+    )
+    client = Client.new(transport)
+    client.analyze.all if options.auto_analyze
+    client
+  end
+
+  # Opens a radare2 session with `Options` and yields it to a block, ensuring cleanup.
+  def self.open(options : Options, &block : Client -> U) : U forall U
+    client = open(options)
+    begin
+      yield client
+    ensure
+      client.close
+    end
+  end
+
+  # Opens a radare2 session configured with individual parameters.
   #
   # Target options:
-  # - nil / "" / "#!pipe" : Connects to the current radare2 in-session pipe (when run via `#!pipe`)
-  # - "http://..." or "https://..." : Connects to a remote radare2 HTTP/REST server
-  # - "tcp://..." : Connects to a remote radare2 TCP socket server
+  # - nil / "" / "#!pipe" : Connects to current radare2 in-session pipe (when run via `#!pipe`)
+  # - "http://..." or "https://..." : Connects to remote radare2 HTTP server
+  # - "tcp://..." : Connects to remote radare2 TCP socket server
   # - File path or URI (e.g. "game.dll", "malloc://1024") : Spawns a local `radare2 -q0` process
   def self.open(
     target : String? = nil,
@@ -33,8 +60,15 @@ module Cradare2
     r2_path : String? = nil,
     timeout : Time::Span? = nil,
   ) : Client
-    transport = build_transport(target, flags, debug, write, r2_path, timeout)
-    Client.new(transport)
+    options = Options.new(
+      target: target,
+      flags: flags,
+      debug: debug,
+      write: write,
+      r2_path: r2_path,
+      timeout: timeout
+    )
+    open(options)
   end
 
   # Opens a radare2 session and yields it to the block, ensuring the session
