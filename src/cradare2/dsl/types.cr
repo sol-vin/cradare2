@@ -41,6 +41,22 @@ module Cradare2
         define_format(name, format, names)
       end
 
+      # Convenience helper to define a struct using an array of tuples ({format, field_name} or {field_name, format}).
+      def define_struct(name : String, fields : Array(Tuple(String, String))) : self
+        return define_format(name, "", [] of String) if fields.empty?
+
+        # Auto-detect whether first element of tuple is format specifier (short, no underscores) or field name
+        first = fields.first
+        if first[0].size <= 2 && !first[0].includes?('_')
+          format = fields.map(&.[0]).join
+          names = fields.map(&.[1])
+        else
+          format = fields.map(&.[1]).join
+          names = fields.map(&.[0])
+        end
+        define_format(name, format, names)
+      end
+
       # Returns the registered format definition for a named format, or nil if not defined (`pf.<name>`).
       def format(name : String) : String?
         res = @client.cmd("pf.#{name}").strip

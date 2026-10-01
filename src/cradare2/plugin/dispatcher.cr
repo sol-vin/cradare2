@@ -87,7 +87,7 @@ module Cradare2
         if handler
           handler.execute(@client, args, json: json_mode)
         else
-          "Unknown crystal command: '#{subcmd}'. Type 'crystal help' for available commands."
+          "Unknown #{@prefix} command: '#{subcmd}'. Type '#{@prefix} help' for available commands."
         end
       rescue ex
         "Error executing '#{cmd_line}': #{ex.message}"

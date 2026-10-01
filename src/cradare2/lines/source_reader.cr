@@ -31,6 +31,11 @@ module Cradare2
         @cache[File.basename(file)] = lines
       end
 
+      # Alias for register_source
+      def set_virtual_source(file : String, content : String) : Nil
+        register_source(file, content)
+      end
+
       # Clears the cached file contents.
       def clear_cache : Nil
         @cache.clear

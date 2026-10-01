@@ -17,6 +17,10 @@ require "./cradare2/lines/line_resolver"
 require "./cradare2/lines/line_helper"
 require "./cradare2/crystal"
 require "./cradare2/client"
+require "./cradare2/plugin/command"
+require "./cradare2/plugin/commands/*"
+require "./cradare2/plugin/dispatcher"
+require "./cradare2/plugin/server"
 require "./cradare2/tui/explorer"
 
 module Cradare2

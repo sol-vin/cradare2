@@ -25,6 +25,15 @@ module Cradare2
         addr_str = AddressUtils.to_hex(address)
         res = @client.cmd("CC. @ #{addr_str}").strip
         return nil if res.empty? || res.includes?("No comment")
+
+        # If the comment was stored as Base64 by CCu, decode it
+        if res.size >= 4 && res.size % 4 == 0 && res.matches?(/^[A-Za-z0-9+\/]+=*$/)
+          begin
+            decoded = Base64.decode_string(res)
+            return decoded if decoded.valid_encoding?
+          rescue
+          end
+        end
         res
       end
 
@@ -53,6 +62,13 @@ module Cradare2
               addr = item["offset"]?.try(&.as_i64?.try(&.to_u64)) || item["addr"]?.try(&.as_i64?.try(&.to_u64))
               text = item["name"]?.try(&.as_s?) || item["comment"]?.try(&.as_s?)
               if addr && text
+                if text.size >= 4 && text.size % 4 == 0 && text.matches?(/^[A-Za-z0-9+\/]+=*$/)
+                  begin
+                    decoded = Base64.decode_string(text)
+                    text = decoded if decoded.valid_encoding?
+                  rescue
+                  end
+                end
                 result[addr] = text
               end
             end

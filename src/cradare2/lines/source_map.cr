@@ -17,6 +17,33 @@ module Cradare2
       def initialize(@reader : SourceReader = SourceReader.new)
       end
 
+      def initialize(mappings : Array(InstructionMapping), @reader : SourceReader = SourceReader.new)
+        mappings.each { |m| add(m) }
+      end
+
+      # Adds a pre-constructed instruction mapping.
+      def add(mapping : InstructionMapping) : InstructionMapping
+        @address_to_instruction[mapping.address] = mapping
+        @index_dirty = true
+
+        file = mapping.location.file
+        line = mapping.location.line
+        norm_file = normalize_file(file)
+        lines_hash = @file_to_lines[norm_file] ||= Hash(Int32, Array(InstructionMapping)).new
+        ins_list = lines_hash[line] ||= Array(InstructionMapping).new
+        ins_list << mapping
+
+        base_file = File.basename(norm_file)
+        if base_file != norm_file
+          base_hash = @file_to_lines[base_file] ||= Hash(Int32, Array(InstructionMapping)).new
+          base_list = base_hash[line] ||= Array(InstructionMapping).new
+          base_list << mapping unless base_list.any? { |m| m.address == mapping.address }
+        end
+
+        @registered_files << file
+        mapping
+      end
+
       # Adds a mapping between an instruction address and a source location.
       def add(
         address : UInt64,
@@ -177,6 +204,26 @@ module Cradare2
         end.sort_by(&.address)
 
         build_groups(matching_ins)
+      end
+
+      # Convenience overload to format interleaved view for a specific function name.
+      def format_interleaved_view(
+        fn_name : String,
+        show_context : Bool = false,
+        context_window : Int32 = 1,
+      ) : String
+        groups = groups_for_function_name(fn_name)
+        format_interleaved_view(groups, show_context, context_window)
+      end
+
+      # Convenience overload to format interleaved view for all mapped instructions.
+      def format_interleaved_view(
+        show_context : Bool = false,
+        context_window : Int32 = 1,
+      ) : String
+        all_ins = @address_to_instruction.values.sort_by(&.address)
+        groups = build_groups(all_ins)
+        format_interleaved_view(groups, show_context, context_window)
       end
 
       # Generates a formatted interleaved view displaying Crystal source code lines

@@ -78,6 +78,11 @@ module Cradare2
         @pointer_address : UInt64,
       )
       end
+
+      # Returns true if this slice is read-only.
+      def read_only? : Bool
+        @read_only
+      end
     end
 
     # Struct representing a Crystal `Fiber` reference in target memory (64-bit).
@@ -95,6 +100,11 @@ module Cradare2
         @stack_size : Int32,
         @resumable : Bool,
       )
+      end
+
+      # Returns true if this fiber is resumable.
+      def resumable? : Bool
+        @resumable
       end
     end
 

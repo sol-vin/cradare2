@@ -45,7 +45,15 @@ module Cradare2
       def read_cstring(address : Address, max_len : Int32 = 256) : String
         cmd_str = "ps #{max_len} @ #{addr_s(address)}"
         res = @client.cmd(cmd_str).strip
-        return res unless res.empty?
+        unless res.empty?
+          # Radare2 ps escapes null bytes as \x00 or \0
+          if split_idx = res.index("\\x00")
+            return res[0...split_idx]
+          elsif split_idx = res.index('\0')
+            return res[0...split_idx]
+          end
+          return res
+        end
 
         bytes = read_bytes(address, max_len)
         return "" if bytes.empty?
@@ -144,6 +152,26 @@ module Cradare2
       def write_string(address : Address, string : String) : self
         @client.cmd("w #{string} @ #{addr_s(address)}")
         self
+      end
+
+      # Writes an 8-bit unsigned integer.
+      def write_u8(address : Address, value : UInt8) : self
+        @client.cmd("wv1 #{value} @ #{addr_s(address)}")
+        self
+      end
+
+      def write_i8(address : Address, value : Int8) : self
+        write_u8(address, value.to_u8!)
+      end
+
+      # Writes a 16-bit unsigned integer.
+      def write_u16(address : Address, value : UInt16) : self
+        @client.cmd("wv2 #{value} @ #{addr_s(address)}")
+        self
+      end
+
+      def write_i16(address : Address, value : Int16) : self
+        write_u16(address, value.to_u16!)
       end
 
       # Writes a 32-bit integer.

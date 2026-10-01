@@ -53,6 +53,12 @@ module Cradare2
       @command_listeners << block
     end
 
+    # Clears all registered command listeners.
+    def clear_command_hooks : self
+      @command_listeners.clear
+      self
+    end
+
     # Executes a command string in radare2 and returns the raw output string.
     def cmd(command : String) : String
       start = Time.instant
@@ -68,11 +74,13 @@ module Cradare2
       end
     end
 
-    # Executes a batch of commands sequentially.
+    # Executes a batch of commands sequentially, returning a mapping of Command => Output.
     def batch(commands : Array(String)) : Hash(String, String)
       results = Hash(String, String).new
       commands.each do |c|
-        results[c] = cmd(c)
+        clean = c.strip
+        next if clean.empty?
+        results[clean] = cmd(clean)
       end
       results
     end
@@ -97,13 +105,27 @@ module Cradare2
       raise ParseError.new("Failed to deserialize JSON for command '#{command}' into #{T}: #{ex.message}\nOutput: #{output}", cause: ex)
     end
 
-    # Helper that catches JSON parse errors on empty/unparsed data, but propagates transport/timeout errors.
-    private def safe_cmdj(command : String, as type : T.class, default : T) : T forall T
+    # Safely parses JSON response into specified model type T, returning nil on parse error or empty output.
+    def safe_cmdj(command : String, as type : T.class) : T? forall T
       output = cmd(command).strip
-      return default if output.empty? || output == "[]" || output == "{}"
-      T.from_json(output)
+      return nil if output.empty? || output == "null"
+      type.from_json(output)
     rescue ex : JSON::ParseException | TypeCastError
-      default
+      nil
+    end
+
+    # Safely parses dynamic JSON response returning JSON::Any, or nil on parse error or empty output.
+    def safe_cmdj(command : String) : JSON::Any?
+      output = cmd(command).strip
+      return nil if output.empty? || output == "null"
+      JSON.parse(output)
+    rescue ex : JSON::ParseException
+      nil
+    end
+
+    # Helper that catches JSON parse errors on empty/unparsed data, returning default value.
+    def safe_cmdj(command : String, as type : T.class, default : T) : T forall T
+      safe_cmdj(command, as: type) || default
     end
 
     # Seeks to the specified target address or symbol (s <target>).
