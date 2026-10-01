@@ -256,15 +256,16 @@ module Cradare2
         # If relative, use forward slashes
         norm = path.gsub('\\', '/')
 
-        # If it's a Windows absolute path like C:/Users/..., convert to relative or basename
+        # If it's a Windows absolute path like C:/Users/..., convert to relative or eliminate colon
         if norm.size >= 2 && norm[1] == ':'
-          # Try making relative to current directory
-          rel = Path[norm].relative_to(Path[Dir.current]).to_s.gsub('\\', '/') rescue nil
-          if rel && !rel.starts_with?("..")
-            return rel
+          # Try making relative to current directory if on same drive/system
+          if rel = (Path[norm].relative_to(Path[Dir.current]).to_s.gsub('\\', '/') rescue nil)
+            if !rel.includes?(':') && !rel.starts_with?("..")
+              return rel
+            end
           end
 
-          # If cannot make relative, use forward slashes starting with /c/...
+          # If cannot make clean relative, use forward slashes starting with /c/...
           drive = norm[0].downcase
           rest = norm[2..]
           return "/#{drive}#{rest}"
