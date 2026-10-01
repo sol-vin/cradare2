@@ -22,9 +22,139 @@ settings:
       title: "\U0001F6E0️ Chores & Tooling"
       bullet: •
 releases:
-- version: 0.2.21
+- version: 0.2.22
   date: "2026-10-01"
   status: active
+  entries:
+  - type: other
+    description: Initial commit of cradare2 library and test suite
+    bullet: •
+    hash: f7cbd31
+    author: Ian Rash
+  - type: other
+    description: Decouple lapis-specific logic; generalize native crash diagnostics
+      and symbol query tools
+    bullet: •
+    hash: fac678c
+    author: Ian Rash
+  - type: feat
+    description: add Crystal runtime inspection, CI matrix, docs deployment, and expanded
+      test suite
+    bullet: ✦
+    hash: 7e68d77
+    author: Ian Rash
+  - type: feat
+    description: add Xref, SecurityInfo, MemoryClassifier, CrashDiagnosis, and interactive
+      Opal TEA Explorer
+    bullet: ✦
+    hash: 0970c53
+    author: Ian Rash
+  - type: fix
+    description: use mouse_enabled parameter in Program.new
+    bullet: ✓
+    badge: '[TUI]'
+    hash: e15224b
+    author: Ian Rash
+  - type: fix
+    description: return Opal::TEA::Cmd.none and Cmd.quit
+    bullet: ✓
+    badge: '[TUI]'
+    hash: aa843e3
+    author: Ian Rash
+  - type: fix
+    description: handle nil sec.perm
+    bullet: ✓
+    badge: '[TUI]'
+    hash: 8e2dcdc
+    author: Ian Rash
+  - type: feat
+    description: add pic? and nx? helpers
+    bullet: ✦
+    badge: '[SECURITY]'
+    hash: 375b517
+    author: Ian Rash
+  - type: style
+    description: format codebase with crystal tool format
+    bullet: •
+    hash: d1b2bb4
+    author: Ian Rash
+  - type: ci
+    description: add shards install step to test and docs jobs
+    bullet: •
+    hash: "1623e00"
+    author: Ian Rash
+  - type: fix
+    description: support cross-platform path separators for module extraction
+    bullet: ✓
+    badge: '[CLASSIFIER]'
+    hash: a667707
+    author: Ian Rash
+  - type: feat
+    description: add radare2 Crystal plugin, source-to-asm matching, and massive test
+      suite
+    bullet: ✦
+    badge: '[PLUGIN]'
+    hash: 0efd8c1
+    author: Ian Rash
+  - type: ci
+    description: add apt update before install-crystal on Ubuntu runners
+    bullet: •
+    hash: d73ac55
+    author: Ian Rash
+  - type: fix
+    description: ensure safe_r2_path strips drive colon across differing drives and
+      OSes
+    bullet: ✓
+    badge: '[LINES]'
+    hash: f1c0eae
+    author: Ian Rash
+  - type: refactor
+    description: modular command registry, line providers, memory forensics, and Godot/Lapis
+      enhancements
+    bullet: ✦
+    hash: 4cbd13b
+    author: Ian Rash
+  - type: fix
+    description: normalize cross-platform paths when grouping modules and resolving
+      base address
+    bullet: ✓
+    badge: '[DEBUGGER]'
+    hash: 4cede40
+    author: Ian Rash
+  - type: other
+    description: 'docs & tests: add 5 deep-dive guides, 5 executable examples, and
+      9 exhaustive test suites (337 passing specs)'
+    bullet: •
+    hash: 0b5e17e
+    author: Ian Rash
+  - type: other
+    description: spec
+    bullet: •
+    hash: "6918822"
+    author: Ian Rash
+  - type: fix
+    description: replace hardware watchpoint with software breakpoint in live r2 malloc
+      target
+    bullet: ✓
+    badge: '[SPEC]'
+    hash: bc35a6d
+    author: Ian Rash
+  - type: feat
+    description: install sol-vin/carbon as automated versioning and changelog system
+    bullet: ✦
+    badge: '[TOOLING]'
+    hash: 887a422
+    author: Ian Rash
+  - type: feat
+    description: add process attachment, advanced decompilation, plugin router, and
+      Godot engine forensics
+    bullet: ✦
+    badge: '[UPSTREAM]'
+    hash: 20e8282
+    author: Ian Rash
+- version: 0.2.21
+  date: "2026-10-01"
+  status: released
   entries:
   - type: other
     description: Initial commit of cradare2 library and test suite

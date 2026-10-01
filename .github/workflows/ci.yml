@@ -51,6 +51,7 @@ jobs:
         run: |
           bin/carbon check
           bin/carbon changelog --compile
+          git diff --exit-code CHANGELOG.md
           bin/carbon doctor
 
   # =========================================================================
