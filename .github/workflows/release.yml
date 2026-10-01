@@ -15,11 +15,16 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Install Crystal
         uses: crystal-lang/install-crystal@v1
         with:
           crystal: 1.21.0
+
+      - name: Install Shards Dependencies
+        run: shards install
 
       - name: Verify Formatting & Run Tests
         run: |
@@ -36,6 +41,7 @@ jobs:
         with:
           files: |
             cradare2-docs-${{ github.ref_name }}.tar.gz
+          body_path: CHANGELOG.md
           generate_release_notes: true
           draft: false
           prerelease: false

@@ -26,6 +26,8 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Update apt repositories
         run: sudo apt-get update
@@ -38,6 +40,18 @@ jobs:
       - name: Verify Code Formatting
         run: |
           crystal tool format --check
+
+      - name: Install Shards Dependencies
+        run: shards install
+
+      - name: Build Carbon Binary
+        run: shards build carbon
+
+      - name: Verify Version Alignment & Changelog
+        run: |
+          bin/carbon check
+          bin/carbon changelog --compile
+          bin/carbon doctor
 
   # =========================================================================
   # MULTI-OS TEST MATRIX (Linux, macOS, Windows) x (1.21.0, latest)
@@ -55,6 +69,8 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Update apt repositories (Linux)
         if: runner.os == 'Linux'
@@ -140,6 +156,8 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Update apt repositories
         run: sudo apt-get update

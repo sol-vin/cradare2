@@ -1,5 +1,5 @@
 name: cradare2
-version: 0.2.0
+version: 0.2.20
 
 authors:
   - sol-vin <ian@sol.vin>
@@ -15,6 +15,13 @@ dependencies:
     github: sol-vin/opal
     branch: main
 
+development_dependencies:
+  carbon:
+    github: sol-vin/carbon
+    branch: main
+
 targets:
   r2-crystal:
     main: src/bin/r2_crystal.cr
+  carbon:
+    main: lib/carbon/src/carbon/cli.cr

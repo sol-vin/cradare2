@@ -72,6 +72,13 @@ describe "Cradare2 Error Hierarchy & System Diagnostics" do
       Cradare2::VERSION.should match(/^\d+\.\d+\.\d+/)
     end
 
+    it "matches shard.yml version" do
+      shard_yml = File.read(File.join(__DIR__, "..", "shard.yml"))
+      version_match = shard_yml.match(/^version:\s*([^\s\r\n#]+)/m)
+      version_match.should_not be_nil
+      Cradare2::VERSION.should eq(version_match.not_nil![1].strip("\"'"))
+    end
+
     it "formats ProcessTerminatedError with diagnostics" do
       err = Cradare2::ProcessTerminatedError.new("Process died unexpected EOF\nRadare2 stderr: SIGSEGV")
       err.to_s.should contain("SIGSEGV")
