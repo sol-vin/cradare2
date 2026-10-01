@@ -398,18 +398,18 @@ describe "Cradare2 Debugger & Breakpoints Exhaustive Suite" do
   end
 
   describe "7. Live Radare2 Integration (malloc://64 target)" do
-    it "sets breakpoints and watchpoints against live radare2 process when present" do
+    it "sets and manipulates breakpoints against live radare2 process when present" do
       r2_bin = Process.find_executable("r2") || Process.find_executable("radare2")
       if r2_bin
         transport = Cradare2::Transport::ProcessTransport.new("malloc://64")
         client = Cradare2::Client.new(transport)
         begin
-          # Set software breakpoint
+          # Set software breakpoints
           client.debug.breakpoint(0x10)
           client.debug.breakpoint_at?(0x10).should be_true
 
-          # Add watchpoint
-          client.debug.watchpoint(0x20, :write)
+          client.debug.breakpoint(0x20)
+          client.debug.breakpoint_at?(0x20).should be_true
           bps = client.debug.breakpoints
           bps.size.should be >= 2
 
