@@ -1,6 +1,7 @@
 module Cradare2
   module Util
-    # Demangler for Crystal, C++, and Rust symbol names.
+    # Demangler for Crystal, C++, and Rust symbol names, with full support for
+    # LLVM/MSVC PDB hex-escaped symbols, operator overloads, and generic types.
     module Demangler
       @@cache = Hash(String, String).new
 
@@ -23,7 +24,7 @@ module Cradare2
       end
 
       private def self.demangle_internal(symbol : String, client : Transport::Base?) : String
-        # Check if it's a Crystal mangled symbol
+        # Check if it's a Crystal mangled symbol (including PDB-escaped)
         if is_crystal_symbol?(symbol)
           return clean_crystal_symbol(symbol)
         end
@@ -45,18 +46,20 @@ module Cradare2
 
       # Checks if symbol matches common Crystal mangled symbol conventions
       def self.is_crystal_symbol?(symbol : String) : Bool
-        s = symbol
-        if s.starts_with?("sym.imp.")
-          s = s[8..]
-        elsif s.starts_with?("sym.")
-          s = s[4..]
-        end
+        s = strip_r2_prefixes(symbol)
 
         s.starts_with?('*') ||
           s.starts_with?('~') ||
           s.includes?("::") ||
           s.includes?('#') ||
-          s.starts_with?("__crystal_")
+          s.starts_with?("__crystal_") ||
+          s.includes?("~crystal_") ||
+          s.includes?("Crystal::") ||
+          s.includes?("_2A.") ||
+          s.includes?(".3A.") ||
+          s.includes?(".23.") ||
+          s.includes?(".28.") ||
+          (s.starts_with?("GC_") && !s.includes?("@@"))
       end
 
       # Checks if symbol looks like Itanium (_Z...) or MSVC (?...) mangled C++
@@ -67,14 +70,54 @@ module Cradare2
           symbol.starts_with?("_R") # Rust v0
       end
 
-      # Cleans Crystal mangled names for human-readable display
-      def self.clean_crystal_symbol(symbol : String) : String
+      # Strips common radare2 symbol prefixes (sym.imp., sym., pdb., sym.pdb.)
+      def self.strip_r2_prefixes(symbol : String) : String
         s = symbol
-        # Remove radare2 symbol prefixes
         if s.starts_with?("sym.imp.")
+          s = s[8..]
+        elsif s.starts_with?("sym.pdb.")
           s = s[8..]
         elsif s.starts_with?("sym.")
           s = s[4..]
+        elsif s.starts_with?("pdb.")
+          s = s[4..]
+        end
+        s
+      end
+
+      # Decodes LLVM/MSVC PDB hex escapes such as:
+      # _2A. -> *, .3A. -> :, .23. -> #, .28. -> (, .29. -> ), .3C. -> <, .3E. -> >, .20. -> ' ', etc.
+      def self.decode_pdb_escapes(symbol : String) : String
+        return symbol unless symbol.includes?('.') || symbol.includes?('_')
+
+        # First decode _XX. at start of string
+        res = symbol.gsub(/^(_[0-9A-Fa-f]{2}\.)/) do |match|
+          hex = match[1..2]
+          hex.to_i(16).chr.to_s rescue match
+        end
+
+        # Decode .XX. anywhere
+        res = res.gsub(/\.([0-9A-Fa-f]{2})\./) do |match|
+          hex = match[1..2]
+          hex.to_i(16).chr.to_s rescue match
+        end
+
+        # Decode any remaining _XX. sequences
+        res = res.gsub(/_([0-9A-Fa-f]{2})\./) do |match|
+          hex = match[1..2]
+          hex.to_i(16).chr.to_s rescue match
+        end
+
+        res
+      end
+
+      # Cleans Crystal mangled names for human-readable display
+      def self.clean_crystal_symbol(symbol : String) : String
+        s = strip_r2_prefixes(symbol)
+
+        # Decode PDB escapes if present
+        if s.includes?("_2A.") || s.includes?(".3A.") || s.includes?(".23.") || s.includes?(".28.") || s.includes?(".3C.")
+          s = decode_pdb_escapes(s)
         end
 
         # Remove leading '*' or '~' used in Crystal internal symbols

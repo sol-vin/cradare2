@@ -23,6 +23,31 @@ module Cradare2
       getter comment : String? = nil
       getter flags : Array(String)? = nil
 
+      def initialize(
+        offset : UInt64 = 0_u64,
+        size : Int32 = 0,
+        opcode : String = "",
+        disasm : String? = nil,
+        bytes : String? = nil,
+        type : String? = nil,
+        jump : UInt64? = nil,
+        fail : UInt64? = nil,
+        comment : String? = nil,
+        flags : Array(String)? = nil,
+      )
+        @raw_offset = offset
+        @raw_addr = offset
+        @size = size
+        @opcode = opcode
+        @disasm = disasm
+        @bytes = bytes
+        @type = type
+        @jump = jump
+        @fail = fail
+        @comment = comment
+        @flags = flags
+      end
+
       def offset : UInt64
         @raw_offset || @raw_addr || 0_u64
       end

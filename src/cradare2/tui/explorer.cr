@@ -9,6 +9,7 @@ module Cradare2
     # Interactive terminal binary explorer and decompiler model powered by Opal TEA.
     class ExplorerModel
       include Opal::TEA::Model
+
       getter client : Client
       getter functions : Array(Model::Function)
       getter filtered_functions : Array(Model::Function)
@@ -98,7 +99,7 @@ module Cradare2
         when "/"
           @searching = true
           @search_query = ""
-        when "escape"
+        when "escape", "esc"
           @search_query = ""
           apply_filter
         when "j", "down"
@@ -115,13 +116,13 @@ module Cradare2
           else
             @code_scroll = Math.max(0, @code_scroll - 1)
           end
-        when "pageup"
+        when "page_up", "pageup"
           if @focus_pane == :list
             @selected_func_idx = Math.max(0, @selected_func_idx - 10)
           else
             @code_scroll = Math.max(0, @code_scroll - 10)
           end
-        when "pagedown"
+        when "page_down", "pagedown"
           if @focus_pane == :list
             @selected_func_idx = Math.min(@filtered_functions.size - 1, @selected_func_idx + 10)
           else
@@ -192,59 +193,52 @@ module Cradare2
                 split.first do |left|
                   left.box(
                     title: "Functions (#{@filtered_functions.size})",
-                    border_fg: @focus_pane == :list ? :cyan : :dark_gray
+                    border_fg: @focus_pane == :list ? :cyan : :white
                   ) do |b|
-                    b.table(
-                      headers: ["Offset", "Function Name", "Size"],
-                      header_fg: :cyan
-                    ) do |tbl|
-                      # Show window of rows around cursor
-                      win_start = Math.max(0, @selected_func_idx - 10)
-                      win_end = Math.min(@filtered_functions.size, win_start + 25)
-
-                      (win_start...win_end).each do |i|
-                        fn = @filtered_functions[i]
-                        is_sel = (i == @selected_func_idx)
-                        name_display = fn.name
-                        if name_display.size > 28
-                          name_display = name_display[0..25] + "..."
-                        end
-                        prefix = is_sel ? "▶ " : "  "
-                        tbl.row([
-                          "#{prefix}0x#{fn.offset.to_s(16)}",
-                          name_display,
-                          "#{fn.size} B",
-                        ])
-                      end
+                    items = @filtered_functions.map_with_index do |f, i|
+                      prefix = (i == @selected_func_idx) ? "▶ " : "  "
+                      "#{prefix}0x#{f.offset.to_s(16)} #{f.name}"
                     end
+                    b.list(items: items, selected_index: @selected_func_idx)
                   end
                 end
 
-                # Right Pane: Code View
+                # Right Pane: Disassembly / Decompilation
                 split.second do |right|
-                  fn_title = active_function.try(&.name) || "Code"
+                  fn = active_function
+                  title = fn ? "Function: #{fn.name} (0x#{fn.offset.to_s(16)})" : "Code View"
                   right.box(
-                    title: "#{fn_title} (Tab: focus, s: split, a: asm, c: C)",
-                    border_fg: @focus_pane == :code ? :cyan : :dark_gray
+                    title: title,
+                    border_fg: @focus_pane == :code ? :cyan : :white
                   ) do |b|
                     if @side_by_side
                       b.split_view(ratio: 0.5) do |code_split|
-                        code_split.first do |c_left|
-                          c_left.code_view(current_disassembly, language: :asm, scroll_offset: @code_scroll)
+                        code_split.first do |asm_box|
+                          asm_box.box(title: "Disassembly (pdf)", border: :rounded) do |ab|
+                            lines = current_disassembly.lines
+                            visible = lines[@code_scroll..Math.min(lines.size, @code_scroll + 20)]? || [] of String
+                            ab.text(visible.join("\n"), fg: :green)
+                          end
                         end
-                        code_split.second do |c_right|
-                          c_right.code_view(current_decompilation, language: :c, scroll_offset: @code_scroll)
+                        code_split.second do |dec_box|
+                          dec_box.box(title: "Decompilation (pdc)", border: :rounded) do |db|
+                            lines = current_decompilation.lines
+                            visible = lines[@code_scroll..Math.min(lines.size, @code_scroll + 20)]? || [] of String
+                            db.text(visible.join("\n"), fg: :white)
+                          end
                         end
                       end
                     else
-                      code_text = @show_asm ? current_disassembly : current_decompilation
-                      lang = @show_asm ? :asm : :c
-                      b.code_view(code_text, language: lang, scroll_offset: @code_scroll)
+                      # Single Pane View
+                      content = @show_asm ? current_disassembly : current_decompilation
+                      lines = content.lines
+                      visible = lines[@code_scroll..Math.min(lines.size, @code_scroll + 20)]? || [] of String
+                      b.text(visible.join("\n"))
                     end
                   end
                 end
               end
-            when 1 # Sections
+            when 1 # Binary Sections
               sections = @client.sections
               root.box(title: "Binary Sections (#{sections.size})", border_fg: :cyan) do |b|
                 b.table(
@@ -275,32 +269,36 @@ module Cradare2
                     tbl.row(["ASLR / PIC", sec.pic? ? "[✓] ENABLED" : "[✗] DISABLED", "Position Independent Code relocation"])
                     tbl.row(["DEP / NX", sec.nx? ? "[✓] ENABLED" : "[✗] DISABLED", "No-Execute stack/heap memory"])
                     tbl.row(["Stack Canary", sec.canary ? "[✓] ENABLED" : "[✗] DISABLED", "Stack buffer overflow canary guard"])
-                    tbl.row(["Base Relocations", sec.relocs ? "[✓] ENABLED" : "[✗] DISABLED", "Address relocations table"])
-                    tbl.row(["Stripped Symbols", sec.stripped ? "[✓] STRIPPED" : "[!] SYMBOLS PRESENT", "Symbol table stripped"])
+                    tbl.row(["Relocations", sec.relocs ? "[✓] RETAINED" : "[✗] STRIPPED", "Base relocations present in header"])
+                    tbl.row(["Stripped Symbols", sec.stripped ? "[✓] STRIPPED" : "[!] UNSTRIPPED", "Debug symbols stripped"])
                   end
-                  unless sec.recommendations.empty?
-                    vs.text("")
-                    vs.text("Recommendations:", bold: true, fg: :yellow)
-                    sec.recommendations.each do |rec|
-                      vs.text("  • #{rec}", fg: :yellow)
+                  vs.text("")
+                  if sec.recommendations.empty?
+                    vs.text("All security best practices are met.", fg: :green, bold: true)
+                  else
+                    vs.text("Recommendations:", fg: :yellow, bold: true)
+                    sec.recommendations.each do |r|
+                      vs.text("  - #{r}", fg: :yellow)
                     end
                   end
                 end
               end
             end
 
-            # 3. Bottom Hotkeys Footer
-            root.hstack do |footer|
-              footer.text(" Tab: Switch Pane │ j/k: Navigate │ s: Split │ a: Asm │ c: C │ /: Search │ q: Quit", fg: :dark_gray)
+            # 3. Bottom Status Bar & Key Help
+            root.box(border: :none) do |bot|
+              bot.hstack do |h|
+                h.text("[Tab] Focus Pane  |  ", fg: :cyan)
+                h.text("[s] Toggle Split  |  ", fg: :cyan)
+                h.text("[a/c] Asm/Decomp  |  ", fg: :cyan)
+                h.text("[/] Filter  |  ", fg: :cyan)
+                h.text("[j/k] Navigate  |  ", fg: :cyan)
+                h.text("[1-3] Switch Tabs  |  ", fg: :cyan)
+                h.text("[q] Quit", fg: :red, bold: true)
+              end
             end
           end
         end
-      end
-    end
-
-    module Explorer
-      def self.run(client : Client) : Nil
-        ExplorerModel.run(client)
       end
     end
   end

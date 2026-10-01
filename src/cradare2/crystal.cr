@@ -2,6 +2,7 @@ require "./models/function"
 require "./models/symbol"
 require "./models/stack_frame"
 require "./util/demangler"
+require "./lines/line_helper"
 
 module Cradare2
   # Crystal-specific binary analysis, memory layout inspection, and debugging tools.
@@ -96,22 +97,36 @@ module Cradare2
       end
     end
 
+    @lines : Lines::LineHelper?
+
     def initialize(@client : Client)
     end
 
+    # Accessor for source-line-to-assembly instruction matching tools.
+    def lines : Lines::LineHelper
+      @lines ||= Lines::LineHelper.new(@client)
+    end
+
+    # Block form for `lines` DSL.
+    def lines(&block : Lines::LineHelper -> U) : U forall U
+      yield lines
+    end
+
     # Returns true if the binary appears to be compiled with Crystal.
-    # Checks for the presence of `__crystal_main`, `*Crystal::*`, or Boehm GC symbols.
+    # Checks for the presence of `__crystal_main`, `*Crystal::*`, Boehm GC symbols, or Crystal mangling.
     def crystal_binary? : Bool
       symbols = @client.symbols
       functions = @client.functions
 
       symbols.any? do |s|
-        s.name.includes?("__crystal_main") ||
+        Util::Demangler.is_crystal_symbol?(s.name) ||
+          s.name.includes?("__crystal_main") ||
           s.name.includes?("Crystal::") ||
           s.name.includes?("GC_init") ||
           s.name.includes?("GC_malloc")
       end || functions.any? do |f|
-        f.name.includes?("__crystal_main") ||
+        Util::Demangler.is_crystal_symbol?(f.name) ||
+          f.name.includes?("__crystal_main") ||
           f.name.includes?("Crystal::") ||
           f.name.includes?("GC_init")
       end
@@ -338,6 +353,43 @@ module Cradare2
           end
         end
       end
+    end
+
+    # Demangles a single symbol using the multi-language demangler.
+    def demangle_symbol(symbol : String) : String
+      Util::Demangler.demangle(symbol, @client.transport)
+    end
+
+    # Discovers all mangled Crystal symbols and functions, demangles them,
+    # and optionally applies the demangled names directly into the radare2 session
+    # via `afn` (analyze function name) and `fr` (flag rename).
+    def demangle_all(apply_to_r2 : Bool = false) : Hash(UInt64, String)
+      results = Hash(UInt64, String).new
+
+      @client.functions.each do |fn|
+        demangled = Util::Demangler.demangle(fn.name, @client.transport)
+        if demangled != fn.name
+          results[fn.offset] = demangled
+          if apply_to_r2
+            # Clean for radare2 name compatibility (replace spaces/quotes)
+            safe_name = demangled.gsub(' ', '_').gsub('"', "").gsub('\'', "")
+            @client.cmd("afn \"#{safe_name}\" 0x#{fn.offset.to_s(16)}")
+          end
+        end
+      end
+
+      @client.symbols.each do |sym|
+        demangled = Util::Demangler.demangle(sym.name, @client.transport)
+        if demangled != sym.name
+          results[sym.vaddr] = demangled
+          if apply_to_r2 && sym.vaddr > 0
+            safe_name = demangled.gsub(' ', '_').gsub('"', "").gsub('\'', "")
+            @client.cmd("fr \"#{sym.name}\" \"#{safe_name}\"")
+          end
+        end
+      end
+
+      results
     end
   end
 end

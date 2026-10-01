@@ -257,6 +257,86 @@ end
 
 ---
 
+## Crystal Plugin for radare2 & Source-to-ASM Matching
+
+`cradare2` includes a comprehensive **radare2 plugin** for Crystal binaries that bridges high-level Crystal source code directly with low-level disassembly, supporting both DWARF debug tables and Windows MSVC/LLVM PDB files (via built-in symbolizer and PDB hex decoding).
+
+### Source Line to Assembly Matching DSL
+
+```crystal
+require "cradare2"
+
+Cradare2.open("my_crystal_app.exe") do |r2|
+  # Query source location for an instruction address
+  if loc = r2.crystal.lines.at(0x140001007)
+    puts "Address 0x140001007 is #{loc.file}:#{loc.line}"
+    puts "Source line: #{loc.source_code}"
+  end
+
+  # Find all machine instructions compiled from a source line
+  instructions = r2.crystal.lines.for_line("src/main.cr", 42)
+  instructions.each do |ins|
+    puts "  0x#{ins.address.to_s(16)}: #{ins.opcode}"
+  end
+
+  # Formatted interleaved source-and-assembly view
+  puts r2.crystal.lines.interleaved("main")
+
+  # Synchronize line mappings into radare2's native `CL` table & `CC` comments
+  count = r2.crystal.lines.sync_to_r2(annotate_comments: true)
+  puts "Synchronized #{count} lines to radare2 session."
+end
+```
+
+### In-Session Plugin & Standalone CLI (`r2-crystal`)
+
+You can run the plugin directly from the command line against any binary or inside a live radare2 interactive session:
+
+```bash
+# Standalone CLI
+r2-crystal my_app.exe detect
+r2-crystal my_app.exe demangle "pdb._2A.add.3C.Int32.3E..3A.Int32"
+r2-crystal my_app.exe lines sync
+r2-crystal my_app.exe src 0x140001007
+r2-crystal my_app.exe asm src/main.cr:42
+r2-crystal my_app.exe interleaved main
+r2-crystal my_app.exe inspect string 0x1400de0c0
+```
+
+Inside a radare2 session, the `crystal` command suite is available natively (or via `#!pipe r2-crystal`):
+
+| Command | Description |
+|---|---|
+| `crystal help` | Display plugin help and command reference |
+| `crystal detect` | Verify if target is a Crystal binary and report entrypoint |
+| `crystal info` | Display Crystal runtime information and compiler metadata |
+| `crystal demangle <sym>` | Demangle Crystal symbols, operators, and LLVM/MSVC PDB escapes |
+| `crystal demangle-all` | Batch demangle all symbols and apply clean names to radare2 (`afn`/`fr`) |
+| `crystal lines` | List all discovered source files and mapped line counts |
+| `crystal lines sync` | Populate radare2's `CL` line table and annotate `CC` source comments |
+| `crystal src <addr>` | Show original source code snippet and context for an address |
+| `crystal asm <file:line>` | Show machine instructions generated for a source code line |
+| `crystal interleaved <target>` | Generate interleaved source code and assembly listing |
+| `crystal classes` | List all detected Crystal classes and modules |
+| `crystal methods <class>` | List methods, addresses, and sizes for a given class |
+| `crystal inspect string <addr>` | Inspect runtime Crystal `String` struct layout in memory |
+| `crystal inspect array <addr>` | Inspect runtime Crystal `Array(T)` header in memory |
+| `crystal inspect slice <addr>` | Inspect runtime Crystal `Slice(T)` header in memory |
+| `crystal crash` | Generate full demangled crash report with stack unwinding |
+
+### Native C radare2 Plugin
+
+For zero-overhead native integration, compile and install the C core plugin from `plugins/`:
+
+```powershell
+cd plugins
+.\build.ps1
+```
+
+This compiles `core_crystal.c` into `core_crystal.dll` (or `.so`/`.dylib`) and installs it into `~/.local/share/radare2/plugins/`, allowing radare2 to recognize the `crystal` command upon startup.
+
+---
+
 ## Building Custom Debuggers with `cradare2`
 
 `cradare2` is designed to serve as the low-level native debugger backend for higher-level frameworks and extensions (such as game engines, GDExtensions, or language runtimes).
@@ -296,7 +376,7 @@ Run the test suite using Crystal's built-in spec runner:
 crystal spec --verbose
 ```
 
-All 68 specs run out-of-the-box using the internal `MockTransport` without requiring external network access.
+All **162 exhaustive specs** run out-of-the-box using the internal `MockTransport` without requiring external network access.
 
 ---
 

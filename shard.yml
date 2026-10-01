@@ -14,3 +14,7 @@ dependencies:
   opal:
     github: sol-vin/opal
     branch: main
+
+targets:
+  r2-crystal:
+    main: src/bin/r2_crystal.cr

@@ -36,7 +36,7 @@ module Cradare2
 
         @input = @process.input
         @output = @process.output
-        @error = @process.error
+        @error = @process.error?
 
         # Initial handshake: r2 -q0 outputs an initial null-byte delimiter upon startup
         read_handshake
@@ -133,7 +133,7 @@ module Cradare2
           args: args,
           input: Process::Redirect::Pipe,
           output: Process::Redirect::Pipe,
-          error: Process::Redirect::Pipe
+          error: Process::Redirect::Close
         )
       rescue ex
         raise TransportError.new("Failed to spawn radare2 process (#{bin}): #{ex.message}", cause: ex)
