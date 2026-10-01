@@ -95,13 +95,16 @@ module Cradare2
 
       # Generates the interactive help menu.
       def help : String
+        rows = @command_list.map do |cmd|
+          aliases_str = cmd.aliases.empty? ? "" : " (#{cmd.aliases.join(", ")})"
+          [cmd.name + aliases_str, cmd.summary]
+        end
+        tbl = Util::CLIFormatter.table(["Command", "Description"], rows, border_style: :rounded)
+
         String.build do |str|
-          str.puts "Usage: #{@prefix} <command> [args...] [-j]"
+          str.puts Util::CLIFormatter.rule("Usage: #{@prefix} <command> [args...] [-j]")
           str.puts
-          str.puts "Commands:"
-          @command_list.each do |cmd|
-            str.puts "  #{cmd.name.ljust(26)} #{cmd.summary}"
-          end
+          str.puts tbl
           str.puts
           str.puts "Flags:"
           str.puts "  -j, --json                 Output results in JSON format"

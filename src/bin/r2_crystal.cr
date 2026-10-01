@@ -106,7 +106,7 @@ end
 # First positional argument is the binary path
 binary_path = ARGV.shift
 unless File.file?(binary_path)
-  STDERR.puts "Error: Binary file '#{binary_path}' not found."
+  STDERR.puts "#{Cradare2::Util::CLIFormatter.badge("ERROR", bg: :red)} Binary file '#{binary_path}' not found."
   exit(1)
 end
 
@@ -120,8 +120,9 @@ options = Cradare2::Options.new(
 Cradare2.open(options) do |client|
   if verbose
     client.on_command do |cmd, dur, success|
-      status_str = success ? "OK" : "ERR"
-      STDERR.puts "[r2 trace] #{cmd} (#{dur.total_milliseconds.round(2)}ms) [#{status_str}]"
+      badge_col = success ? :green : :red
+      status_badge = Cradare2::Util::CLIFormatter.badge(success ? "OK" : "ERR", bg: badge_col)
+      STDERR.puts "#{status_badge} [r2 trace] #{cmd} (#{dur.total_milliseconds.round(2)}ms)"
     end
   end
 

@@ -69,13 +69,16 @@ module Cradare2
       # Unified help menu aggregating all mounted command suites.
       def help : String
         String.build do |str|
-          str.puts "Available Command Suites:"
+          str.puts Util::CLIFormatter.rule("Available Command Suites")
           @routes.each do |prefix, disp|
-            str.puts "\n=== #{prefix.upcase} COMMANDS (#{prefix} <cmd>) ==="
-            disp.command_list.each do |cmd|
-              aliases_str = cmd.aliases.empty? ? "" : " (aliases: #{cmd.aliases.join(", ")})"
-              str.puts "  #{cmd.name.ljust(16)} #{cmd.summary}#{aliases_str}"
+            str.puts
+            str.puts Util::CLIFormatter.rule("=== #{prefix.upcase} COMMANDS (#{prefix} <cmd>) ===")
+            str.puts
+            rows = disp.command_list.map do |cmd|
+              aliases_str = cmd.aliases.empty? ? "-" : cmd.aliases.join(", ")
+              [cmd.name, aliases_str, cmd.summary]
             end
+            str.puts Util::CLIFormatter.table(["Command", "Aliases", "Summary"], rows, border_style: :rounded)
           end
         end
       end

@@ -32,7 +32,13 @@ module Cradare2
                 "value"    => s.value,
               }.to_json
             end
-            "Crystal String @ 0x#{addr.to_s(16)}:\n  type_id:  #{s.type_id}\n  bytesize: #{s.bytesize}\n  length:   #{s.length}\n  value:    \"#{s.value}\""
+            rows = [
+              ["type_id:  #{s.type_id}"],
+              ["bytesize: #{s.bytesize}"],
+              ["length:   #{s.length}"],
+              ["value:    \"#{s.value}\""],
+            ]
+            Util::CLIFormatter.table(["Crystal String @ 0x#{addr.to_s(16)}:"], rows, border_style: :rounded)
           when "array", "arr"
             arr = client.crystal.read_array_header(addr)
             if json
@@ -45,7 +51,13 @@ module Cradare2
                 "buffer_address" => "0x#{arr.buffer_address.to_s(16)}",
               }.to_json
             end
-            "Crystal Array(T) @ 0x#{addr.to_s(16)}:\n  type_id:  #{arr.type_id}\n  size:     #{arr.size}\n  capacity: #{arr.capacity}\n  buffer:   0x#{arr.buffer_address.to_s(16)}"
+            rows = [
+              ["type_id:  #{arr.type_id}"],
+              ["size:     #{arr.size}"],
+              ["capacity: #{arr.capacity}"],
+              ["buffer:   0x#{arr.buffer_address.to_s(16)}"],
+            ]
+            Util::CLIFormatter.table(["Crystal Array(T) @ 0x#{addr.to_s(16)}:"], rows, border_style: :rounded)
           when "slice"
             sl = client.crystal.read_slice_header(addr)
             if json
@@ -57,7 +69,12 @@ module Cradare2
                 "pointer_address" => "0x#{sl.pointer_address.to_s(16)}",
               }.to_json
             end
-            "Crystal Slice(T) @ 0x#{addr.to_s(16)}:\n  size:      #{sl.size}\n  read_only: #{sl.read_only}\n  pointer:   0x#{sl.pointer_address.to_s(16)}"
+            rows = [
+              ["size:      #{sl.size}"],
+              ["read_only: #{sl.read_only}"],
+              ["pointer:   0x#{sl.pointer_address.to_s(16)}"],
+            ]
+            Util::CLIFormatter.table(["Crystal Slice(T) @ 0x#{addr.to_s(16)}:"], rows, border_style: :rounded)
           else
             err = "Unknown inspect type '#{type}'. Supported: string, array, slice."
             json ? {"error" => err}.to_json : err

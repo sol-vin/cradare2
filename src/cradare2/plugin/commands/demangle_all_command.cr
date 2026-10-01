@@ -19,7 +19,20 @@ module Cradare2
             }.to_json
           end
 
-          "Demangled and renamed #{results.size} functions/symbols in radare2 session."
+          badge = Util::CLIFormatter.badge("RENAMED", bg: :green)
+          if results.empty?
+            "#{badge} No mangled Crystal symbols found to rename."
+          else
+            rows = results.map do |addr, demangled|
+              ["0x#{addr.to_s(16)}", demangled]
+            end
+            tbl = Util::CLIFormatter.table(["Address", "Demangled Symbol"], rows, border_style: :rounded)
+            String.build do |str|
+              str.puts "#{badge} Demangled and renamed #{results.size} functions/symbols in radare2 session."
+              str.puts
+              str.puts tbl
+            end
+          end
         end
       end
     end

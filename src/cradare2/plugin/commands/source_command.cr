@@ -38,7 +38,8 @@ module Cradare2
           end
 
           String.build do |str|
-            str.puts "=== #{loc.file}:#{loc.line} (0x#{addr.to_s(16)}) ==="
+            str.puts Util::CLIFormatter.rule("=== #{loc.file}:#{loc.line} (0x#{addr.to_s(16)}) ===")
+            str.puts
             context.each do |c|
               prefix = c[:current] ? "▶ " : "  "
               str.puts "#{prefix}#{c[:line].to_s.rjust(5)}: #{c[:text]}"

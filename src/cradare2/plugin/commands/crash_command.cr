@@ -22,7 +22,7 @@ module Cradare2
             }.to_json
           end
 
-          client.crystal.crash_report
+          Util::CLIFormatter.markdown(client.crystal.crash_report)
         end
       end
     end

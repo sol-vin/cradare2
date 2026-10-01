@@ -24,15 +24,16 @@ module Cradare2
             }.to_json
           end
 
-          String.build do |str|
-            str.puts "=== Crystal Target Info ==="
-            str.puts "Crystal Binary: #{is_cr ? "Yes" : "No"}"
-            if ep
-              str.puts "Entrypoint (__crystal_main): 0x#{ep.to_s(16)}"
-            end
-            str.puts "Boehm GC Functions: #{gc_funcs.size} found"
-            str.puts "Crystal Classes/Modules: #{classes.size} discovered"
+          rows = [
+            ["Crystal Binary: #{is_cr ? "Yes" : "No"}"],
+          ]
+          if ep
+            rows << ["Entrypoint (__crystal_main): 0x#{ep.to_s(16)}"]
           end
+          rows << ["Boehm GC Functions: #{gc_funcs.size} found"]
+          rows << ["Crystal Classes/Modules: #{classes.size} discovered"]
+
+          Util::CLIFormatter.table(["=== Crystal Target Info ==="], rows, border_style: :rounded)
         end
       end
     end

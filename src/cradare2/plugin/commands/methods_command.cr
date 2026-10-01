@@ -36,12 +36,16 @@ module Cradare2
               return {"class" => cls, "methods" => sym_items}.to_json
             end
 
+            rows = syms.map do |s|
+              demangled = Util::Demangler.demangle(s.name, client.transport)
+              ["0x#{s.vaddr.to_s(16)}", demangled, "#{s.size} bytes"]
+            end
+            tbl = Util::CLIFormatter.table(["Address", "Method Signature", "Size"], rows, border_style: :rounded)
+
             return String.build do |str|
-              str.puts "Methods for #{cls} (#{syms.size}):"
-              syms.each do |s|
-                demangled = Util::Demangler.demangle(s.name, client.transport)
-                str.puts "  0x#{s.vaddr.to_s(16)}: #{demangled} (#{s.size} bytes)"
-              end
+              str.puts Util::CLIFormatter.rule("Methods for #{cls} (#{syms.size}):")
+              str.puts
+              str.puts tbl
             end
           end
 
@@ -58,12 +62,16 @@ module Cradare2
             return {"class" => cls, "methods" => method_items}.to_json
           end
 
+          rows = methods.map do |m|
+            demangled = Util::Demangler.demangle(m.name, client.transport)
+            ["0x#{m.offset.to_s(16)}", demangled, "#{m.size} bytes"]
+          end
+          tbl = Util::CLIFormatter.table(["Address", "Method Signature", "Size"], rows, border_style: :rounded)
+
           String.build do |str|
-            str.puts "Methods for #{cls} (#{methods.size}):"
-            methods.each do |m|
-              demangled = Util::Demangler.demangle(m.name, client.transport)
-              str.puts "  0x#{m.offset.to_s(16)}: #{demangled} (#{m.size} bytes)"
-            end
+            str.puts Util::CLIFormatter.rule("Methods for #{cls} (#{methods.size}):")
+            str.puts
+            str.puts tbl
           end
         end
       end

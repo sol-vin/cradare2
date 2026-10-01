@@ -21,9 +21,11 @@ module Cradare2
 
           if is_cr
             ep_str = ep ? "0x#{ep.to_s(16)}" : "unknown"
-            "Target is a Crystal binary! (Entrypoint: #{ep_str})"
+            badge = Util::CLIFormatter.badge("CRYSTAL", bg: :green)
+            "#{badge} Target is a Crystal binary! (Entrypoint: #{ep_str})"
           else
-            "Target does NOT appear to be a Crystal binary."
+            badge = Util::CLIFormatter.badge("NON-CRYSTAL", bg: :dark_gray)
+            "#{badge} Target does NOT appear to be a Crystal binary."
           end
         end
       end

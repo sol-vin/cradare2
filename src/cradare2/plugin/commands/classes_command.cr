@@ -20,11 +20,15 @@ module Cradare2
 
           return "No Crystal classes found." if classes.empty?
 
+          rows = classes.map_with_index(1) do |c, idx|
+            [idx.to_s, c]
+          end
+          tbl = Util::CLIFormatter.table(["#", "Class / Module Name"], rows, border_style: :rounded)
+
           String.build do |str|
-            str.puts "Discovered Crystal Classes/Modules (#{classes.size}):"
-            classes.each do |c|
-              str.puts "  - #{c}"
-            end
+            str.puts Util::CLIFormatter.rule("Discovered Crystal Classes/Modules (#{classes.size}):")
+            str.puts
+            str.puts tbl
           end
         end
       end

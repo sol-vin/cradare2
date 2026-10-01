@@ -242,7 +242,7 @@ module Cradare2
             if group.file != current_file
               current_file = group.file
               str.puts
-              str.puts "=== File: #{current_file} ==="
+              str.puts Util::CLIFormatter.rule("=== File: #{current_file} ===")
             end
 
             str.puts

@@ -14,7 +14,8 @@ module Cradare2
             if json
               return {"synchronized" => count}.to_json
             end
-            return "Synchronized #{count} source line mappings into radare2 (CL table and CC comments)."
+            badge = Util::CLIFormatter.badge("SYNCED", bg: :green)
+            return "#{badge} Synchronized #{count} source line mappings into radare2 (CL table and CC comments)."
           end
 
           if args.empty?
@@ -36,13 +37,18 @@ module Cradare2
               return "No source line mappings found. Ensure binary has debug info (PDB or DWARF)."
             end
 
+            rows = files.map do |f|
+              lines = map.lines_for_file(f)
+              [f, "#{lines.size} mapped lines"]
+            end
+            tbl = Util::CLIFormatter.table(["File", "Mapped Lines"], rows, border_style: :rounded)
+
             String.build do |str|
-              str.puts "Mapped Source Files (#{files.size}):"
-              files.each do |f|
-                lines = map.lines_for_file(f)
-                str.puts "  - #{f} (#{lines.size} mapped lines)"
-              end
-              str.puts "\nUse 'crystal lines <addr|func>' or 'crystal interleaved <func>' to inspect."
+              str.puts Util::CLIFormatter.rule("Mapped Source Files (#{files.size})")
+              str.puts
+              str.puts tbl
+              str.puts
+              str.puts "Use 'crystal lines <addr|func>' or 'crystal interleaved <func>' to inspect."
             end
           else
             target = args.first
@@ -60,7 +66,8 @@ module Cradare2
                   }.to_json
                 end
                 src = loc.source_code || "(source line unavailable)"
-                "0x#{addr.to_s(16)} -> #{loc}\n  | #{src.strip}"
+                badge = Util::CLIFormatter.badge("MAPPED", bg: :blue)
+                "#{badge} 0x#{addr.to_s(16)} -> #{loc}\n  | #{src.strip}"
               else
                 if json
                   return {"error" => "No source mapping found for address 0x#{addr.to_s(16)}"}.to_json

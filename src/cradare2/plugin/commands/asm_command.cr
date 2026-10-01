@@ -46,12 +46,16 @@ module Cradare2
             }.to_json
           end
 
+          rows = instructions.map do |ins|
+            bytes_str = ins.bytes.empty? ? "-" : ins.bytes
+            ["0x#{ins.address.to_s(16).rjust(8, '0')}", bytes_str, ins.opcode]
+          end
+          tbl = Util::CLIFormatter.table(["Address", "Bytes", "Disassembly"], rows, border_style: :rounded)
+
           String.build do |str|
-            str.puts "Instructions for #{file}:#{line} (#{instructions.size} insts):"
-            instructions.each do |ins|
-              bytes_str = ins.bytes.empty? ? "" : ins.bytes.ljust(16)
-              str.puts "  0x#{ins.address.to_s(16).rjust(8, '0')}  #{bytes_str}  #{ins.opcode}"
-            end
+            str.puts Util::CLIFormatter.rule("Instructions for #{file}:#{line} (#{instructions.size} insts):")
+            str.puts
+            str.puts tbl
           end
         end
       end
