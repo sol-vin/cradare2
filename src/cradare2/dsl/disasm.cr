@@ -68,15 +68,56 @@ module Cradare2
       end
 
       # Decompiles current function or target to C-like pseudocode (pdc, or pdg if ghidra is available).
-      def decompile(target : (UInt64 | Int32 | Int64 | String)? = nil) : String
+      # Optionally auto-analyzes function first (`af @ <addr>`) and falls back to disassembly (`pdf`) if decompilation fails.
+      def decompile(
+        target : (UInt64 | Int32 | Int64 | String)? = nil,
+        auto_analyze : Bool = true,
+        fallback_asm : Bool = true,
+      ) : String
+        if auto_analyze && target
+          @client.cmd("af @ #{addr_s(target)}") rescue nil
+        end
+
         ghidra_cmd = target ? "pdg @ #{addr_s(target)}" : "pdg"
-        ghidra_output = @client.cmd(ghidra_cmd)
+        ghidra_output = @client.cmd(ghidra_cmd).strip
         if !ghidra_output.empty? && !ghidra_output.includes?("Cannot") && !ghidra_output.includes?("not found")
           return ghidra_output
         end
 
         pdc_cmd = target ? "pdc @ #{addr_s(target)}" : "pdc"
-        @client.cmd(pdc_cmd)
+        pdc_output = @client.cmd(pdc_cmd).strip
+        if !pdc_output.empty? && !pdc_output.includes?("Cannot find function")
+          return pdc_output
+        end
+
+        if fallback_asm
+          function_text(target).strip
+        else
+          pdc_output
+        end
+      end
+
+      # Decompiles function with side-by-side assembly instruction comparison (pdca).
+      def side_by_side(target : (UInt64 | Int32 | Int64 | String)? = nil, auto_analyze : Bool = true) : String
+        if auto_analyze && target
+          @client.cmd("af @ #{addr_s(target)}") rescue nil
+        end
+        cmd_str = target ? "pdca @ #{addr_s(target)}" : "pdca"
+        res = @client.cmd(cmd_str).strip
+        res.empty? || res.includes?("Cannot") ? decompile(target, auto_analyze: false) : res
+      end
+
+      # Disassembles instructions interleaved with high-level source lines (pdls).
+      def source_interleaved(target : (UInt64 | Int32 | Int64 | String)? = nil, count : Int32 = 20) : String
+        cmd_str = target ? "pdls #{count} @ #{addr_s(target)}" : "pdls #{count}"
+        @client.cmd(cmd_str).strip
+      end
+
+      # DWARF / PDB line-annotated decompilation if line metadata is present (CLd).
+      def annotated_source(target : (UInt64 | Int32 | Int64 | String)? = nil) : String
+        cmd_str = target ? "CLd @ #{addr_s(target)}" : "CLd"
+        res = @client.cmd(cmd_str).strip
+        res.empty? || res.includes?("Cannot") ? decompile(target) : res
       end
     end
   end

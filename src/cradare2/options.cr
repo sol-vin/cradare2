@@ -7,6 +7,7 @@ module Cradare2
     property write : Bool
     property r2_path : String?
     property timeout : Time::Span?
+    property attach_pid : Int64?
     property source_paths : Array(String)
     property path_mappings : Hash(String, String)
     property auto_analyze : Bool
@@ -19,6 +20,7 @@ module Cradare2
       @write : Bool = false,
       @r2_path : String? = nil,
       @timeout : Time::Span? = nil,
+      @attach_pid : Int64? = nil,
       @source_paths : Array(String) = [] of String,
       @path_mappings : Hash(String, String) = Hash(String, String).new,
       @auto_analyze : Bool = false,
@@ -83,6 +85,15 @@ module Cradare2
       self
     end
 
+    def attach_pid(val : Int32 | Int64?) : self
+      @attach_pid = val ? val.to_i64 : nil
+      if val
+        @debug = true
+        @write = true
+      end
+      self
+    end
+
     def clone : Options
       Options.new(
         target: @target,
@@ -91,6 +102,7 @@ module Cradare2
         write: @write,
         r2_path: @r2_path,
         timeout: @timeout,
+        attach_pid: @attach_pid,
         source_paths: @source_paths.dup,
         path_mappings: @path_mappings.dup,
         auto_analyze: @auto_analyze,

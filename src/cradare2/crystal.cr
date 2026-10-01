@@ -244,6 +244,29 @@ module Cradare2
       end
     end
 
+    # Decompiles a specific method belonging to a Crystal class or struct.
+    def decompile_method(class_name : String, method_name : String, side_by_side : Bool = false) : String
+      target_fn = methods_for_class(class_name).find do |fn|
+        info = parse_symbol(fn.name)
+        info.method_name == method_name || fn.name.includes?(method_name)
+      end
+
+      if target_fn
+        return side_by_side ? @client.disasm.side_by_side(target_fn.offset) : @client.disasm.decompile(target_fn.offset)
+      end
+
+      target_sym = symbols_for_class(class_name).find do |s|
+        info = parse_symbol(s.name)
+        info.method_name == method_name || s.name.includes?(method_name)
+      end
+
+      if target_sym
+        side_by_side ? @client.disasm.side_by_side(target_sym.vaddr) : @client.disasm.decompile(target_sym.vaddr)
+      else
+        "// Function '#{class_name}##{method_name}' not found in analyzed binary symbols."
+      end
+    end
+
     # Parses a Crystal symbol into its constituent class and method parts.
     def parse_symbol(symbol : String) : CrystalSymbolInfo
       cleaned = Util::Demangler.clean_crystal_symbol(symbol)

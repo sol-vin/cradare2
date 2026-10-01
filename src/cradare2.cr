@@ -20,20 +20,33 @@ require "./cradare2/client"
 require "./cradare2/plugin/command"
 require "./cradare2/plugin/commands/*"
 require "./cradare2/plugin/dispatcher"
+require "./cradare2/plugin/router"
 require "./cradare2/plugin/server"
+require "./cradare2/engine/godot"
 require "./cradare2/tui/explorer"
 
 module Cradare2
   # Opens a radare2 session using an `Options` struct.
   def self.open(options : Options) : Client
-    transport = build_transport(
-      options.target,
-      options.flags,
-      options.debug,
-      options.write,
-      options.r2_path,
-      options.timeout
-    )
+    transport = if pid = options.attach_pid
+                  Transport::ProcessTransport.new(
+                    target: "",
+                    flags: (options.flags.includes?("-p") ? options.flags : (["-p", pid.to_s] + options.flags)),
+                    debug: true,
+                    write: true,
+                    r2_path: options.r2_path,
+                    timeout: options.timeout
+                  )
+                else
+                  build_transport(
+                    options.target,
+                    options.flags,
+                    options.debug,
+                    options.write,
+                    options.r2_path,
+                    options.timeout
+                  )
+                end
     client = Client.new(transport)
     client.analyze.all if options.auto_analyze
     client
@@ -42,6 +55,41 @@ module Cradare2
   # Opens a radare2 session with `Options` and yields it to a block, ensuring cleanup.
   def self.open(options : Options, &block : Client -> U) : U forall U
     client = open(options)
+    begin
+      yield client
+    ensure
+      client.close
+    end
+  end
+
+  # Attaches radare2 in debug mode to a running process by PID.
+  def self.attach(
+    pid : Int32 | Int64,
+    flags : Array(String) = [] of String,
+    r2_path : String? = nil,
+    timeout : Time::Span? = nil,
+  ) : Client
+    options = Options.new(
+      target: "",
+      flags: ["-p", pid.to_s] + flags,
+      debug: true,
+      write: true,
+      r2_path: r2_path,
+      timeout: timeout,
+      attach_pid: pid.to_i64
+    )
+    open(options)
+  end
+
+  # Attaches radare2 in debug mode to a running process by PID and yields client to block.
+  def self.attach(
+    pid : Int32 | Int64,
+    flags : Array(String) = [] of String,
+    r2_path : String? = nil,
+    timeout : Time::Span? = nil,
+    &block : Client -> U
+  ) : U forall U
+    client = attach(pid, flags, r2_path, timeout)
     begin
       yield client
     ensure

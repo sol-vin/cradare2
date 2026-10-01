@@ -374,6 +374,47 @@ module Cradare2
         matching.try(&.base_address)
       end
 
+      # Checks if an address represents a stale vtable pointer (pointing outside all currently mapped modules).
+      def stale_vtable?(address : UInt64) : Bool
+        return false if address < 0x10000_u64
+        mods = modules
+        return false if mods.empty?
+        !mods.any? { |m| m.contains?(address) }
+      end
+
+      # Scans standard object registers (e.g. RCX, RDI, RSI, RBX) to detect objects holding stale vtable pointers
+      # pointing outside currently mapped module boundaries (frequent during dynamic plugin / GDExtension hot reloading).
+      def find_stale_vtables(
+        registers_to_scan : Array(String) = ["rcx", "rdi", "rsi", "rbx"],
+        vtable_offset : Int32 = 0,
+      ) : Array(NamedTuple(register: String, object_address: UInt64, vtable: UInt64, reason: String))
+        results = [] of NamedTuple(register: String, object_address: UInt64, vtable: UInt64, reason: String)
+        mods = modules
+        return results if mods.empty?
+
+        registers_to_scan.each do |reg|
+          val_s = @client.cmd("?v #{reg}").strip
+          if obj_addr = AddressUtils.to_u64?(val_s)
+            if obj_addr > 0x10000_u64
+              begin
+                vtable_ptr = @client.memory.read_u64(obj_addr + vtable_offset)
+                if vtable_ptr > 0x10000_u64 && !mods.any? { |m| m.contains?(vtable_ptr) }
+                  results << {
+                    register:       reg,
+                    object_address: obj_addr,
+                    vtable:         vtable_ptr,
+                    reason:         "VTable 0x#{vtable_ptr.to_s(16)} points outside all #{mods.size} mapped process modules (stale hot-reload pointer)",
+                  }
+                end
+              rescue
+              end
+            end
+          end
+        end
+
+        results
+      end
+
       private def group_maps_by_module(all_maps : Array(Model::MemoryMap)) : Array(Model::ModuleInfo)
         named_maps = all_maps.reject { |m| m.name.empty? || m.name.starts_with?('[') || m.name == "null" }
         return [] of Model::ModuleInfo if named_maps.empty?
@@ -562,6 +603,12 @@ module Cradare2
           recs << "Stack pointer corrupted or stack overflow detected; check for infinite recursion or massive stack allocations"
         when :access_violation
           recs << "Access violation: attempt to read/write unmapped or protected memory"
+        end
+
+        # Check for stale vtables across hot-reloaded modules
+        stale = find_stale_vtables rescue [] of NamedTuple(register: String, object_address: UInt64, vtable: UInt64, reason: String)
+        unless stale.empty?
+          recs << "Stale vtable pointer detected: #{stale.first[:reason]}"
         end
 
         Model::CrashDiagnosis.new(

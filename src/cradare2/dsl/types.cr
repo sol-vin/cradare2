@@ -113,6 +113,12 @@ module Cradare2
         @client.cmd("pf.-#{name}")
         self
       end
+
+      # Registers all standard Godot 4.x GDExtension print formats (`pf.godot_*`).
+      def register_godot_formats! : self
+        Engine::Godot.register_formats(@client)
+        self
+      end
     end
   end
 end

@@ -351,6 +351,16 @@ module Cradare2
       self
     end
 
+    # Reads and decodes a Godot 4 Object header at the given virtual address.
+    def godot_object(address : Address) : Engine::Godot::GodotObjectHeader
+      Engine::Godot.read_object_header(self, address)
+    end
+
+    # Reads and decodes a Godot 4 Variant payload at the given virtual address.
+    def godot_variant(address : Address) : Engine::Godot::DecodedVariant
+      Engine::Godot::VariantDecoder.decode_at(self, address)
+    end
+
     # --- Top-Level Ergonomic Shortcuts ---
 
     # Disassembles instructions returning typed Instruction models.
