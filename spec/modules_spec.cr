@@ -90,10 +90,41 @@ describe "Debugger module forensics" do
     mods = client.modules
     mods.size.should eq(1)
     mods.first.name.should eq("game.dll")
+    mods.first.basename.should eq("game.dll")
     mods.first.base_address.should eq(4194304_u64)
     mods.first.end_address.should eq(4259840_u64)
 
     client.module_at(4200000_u64).try(&.name).should eq("game.dll")
     client.module_at(140723405000_u64).should be_nil # [stack] is filtered out
+    client.base_address_of("game.dll").should eq(4194304_u64)
+    client.base_address_of("C:\\games\\game.dll").should eq(4194304_u64)
+  end
+
+  it "handles POSIX paths when grouping memory maps" do
+    handler = ->(cmd : String) {
+      case cmd
+      when "dmmj"
+        "[]"
+      when "dmj"
+        <<-JSON
+        [
+          {"name": "/usr/lib/x86_64-linux-gnu/libengine.so", "addr": 1000, "addr_end": 2000, "perm": "-r-x"},
+          {"name": "/usr/lib/x86_64-linux-gnu/libengine.so", "addr": 2000, "addr_end": 3000, "perm": "-rw-"}
+        ]
+        JSON
+      else
+        ""
+      end
+    }
+
+    client = Cradare2.mock(handler)
+    mods = client.modules
+    mods.size.should eq(1)
+    mods.first.name.should eq("libengine.so")
+    mods.first.basename.should eq("libengine.so")
+    mods.first.base_address.should eq(1000_u64)
+    mods.first.end_address.should eq(3000_u64)
+    client.base_address_of("libengine.so").should eq(1000_u64)
+    client.base_address_of("/usr/lib/x86_64-linux-gnu/libengine.so").should eq(1000_u64)
   end
 end

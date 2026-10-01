@@ -128,10 +128,11 @@ module Cradare2
 
       # Returns the base load address of a specific loaded module by name (e.g. "game.dll" or "godot.exe").
       def base_address_of(module_name : String) : UInt64?
-        clean_name = module_name.downcase
+        clean_name = module_name.gsub('\\', '/').split('/').reject(&.empty?).last?.try(&.downcase) || module_name.downcase
         matching = modules.find do |m|
+          m_clean = m.name.gsub('\\', '/').split('/').reject(&.empty?).last?.try(&.downcase) || m.name.downcase
           m.name.downcase == clean_name ||
-            File.basename(m.name).downcase == clean_name ||
+            m_clean == clean_name ||
             m.name.downcase.includes?(clean_name)
         end
         matching.try(&.base_address)
@@ -143,7 +144,7 @@ module Cradare2
 
         grouped = Hash(String, Array(Model::MemoryMap)).new
         named_maps.each do |m|
-          base_key = File.basename(m.name)
+          base_key = m.name.gsub('\\', '/').split('/').reject(&.empty?).last? || m.name
           grouped[base_key] ||= Array(Model::MemoryMap).new
           grouped[base_key] << m
         end

@@ -82,6 +82,11 @@ module Cradare2
         address >= base_address && address < end_address
       end
 
+      # Returns the clean filename/basename of the module (e.g., "game.dll" from "C:\\games\\game.dll" or "/usr/lib/libgame.so")
+      def basename : String
+        @name.gsub('\\', '/').split('/').reject(&.empty?).last? || @name
+      end
+
       # Formatted display string
       def to_s(io : IO) : Nil
         io << @name << " [0x" << base_address.to_s(16) << " - 0x" << end_address.to_s(16) << "]"
