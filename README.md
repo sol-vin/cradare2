@@ -4,7 +4,7 @@
 [![CI](https://github.com/sol-vin/cradare2/actions/workflows/ci.yml/badge.svg)](https://github.com/sol-vin/cradare2/actions/workflows/ci.yml)
 [![Docs](https://img.shields.io/badge/docs-GitHub%20Pages-blue.svg)](https://sol-vin.github.io/cradare2/)
 [![Crystal](https://img.shields.io/badge/crystal-%3E%3D%201.10.0-black.svg)](https://crystal-lang.org)
-[![Version](https://img.shields.io/badge/version-0.2.26-blue.svg)](https://github.com/sol-vin/cradare2/releases)
+[![Version](https://img.shields.io/badge/version-0.2.27-blue.svg)](https://github.com/sol-vin/cradare2/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 <!-- /carbon:badges -->
 
