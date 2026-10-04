@@ -13,6 +13,13 @@ module Cradare2
       def initialize(@default_handler = nil)
       end
 
+      # Convenience constructor accepting a default handler block.
+      def self.new(&block : String -> String) : MockTransport
+        mock = new
+        mock.default(&block)
+        mock
+      end
+
       # Registers a mock response for an exact command string.
       def on(command : String, response : String) : self
         @handlers << {command, ->(_cmd : String) { response }}

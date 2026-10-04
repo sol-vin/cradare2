@@ -1,8 +1,12 @@
 # cradare2
 
+<!-- carbon:badges -->
 [![CI](https://github.com/sol-vin/cradare2/actions/workflows/ci.yml/badge.svg)](https://github.com/sol-vin/cradare2/actions/workflows/ci.yml)
 [![Docs](https://img.shields.io/badge/docs-GitHub%20Pages-blue.svg)](https://sol-vin.github.io/cradare2/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Crystal](https://img.shields.io/badge/crystal-%3E%3D%201.10.0-black.svg)](https://crystal-lang.org)
+[![Version](https://img.shields.io/badge/version-0.2.26-blue.svg)](https://github.com/sol-vin/cradare2/releases)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+<!-- /carbon:badges -->
 
 A powerful, idiomatic Crystal framework and high-level DSL for controlling [radare2](https://www.radare.org/) via the `r2pipe` protocol across **Windows**, **Linux**, and **macOS**.
 
@@ -43,8 +47,18 @@ Includes low-level command framing, strongly typed `JSON::Serializable` models, 
 - **Expressive DSLs**:
   - `r2.analyze`: Fluent binary analysis (`all`, `calls`, `functions`, `references`, `autoname`, `preludes`, `emulate`).
   - `r2.disasm`: Disassembly to formatted text, typed instructions, and Ghidra decompilation (`pdc`/`pdg`).
-  - `r2.memory`: Direct reading & writing of integers (`u8..u64`, `i8..i64`, `f32..f64`), strings, C-strings (`read_cstring`), pointer arrays (`read_pointer_array`), hexdump, and pattern searching.
-  - `r2.debug`: Process control, registers, breakpoints, memory classification, and crash reporting.
+  - `r2.memory`: Direct reading & writing of integers (`u8..u128`, `i8..i128`, `f32..f64`), 128-bit QWORD Emotion Engine SIMD, strings, C-strings (`read_cstring`), typed arrays (`read_pointer32_array`, `read_pointer_array`, `read_u32_array`, `read_f32_array`), hexdump, diffing (`hexdiff`), and pattern searching (`search_hex`).
+  - `r2.debug`: Process control, breakpoints, memory classification, crash reporting, and architecture-agnostic registers with first-class x86_64, ARM, and MIPS R5900/I named registers.
+- **PlayStation 2 & Citrine Support (`require "cradare2/ps2/citrine"`)**:
+  - Privileged GS registers (`PMODE`, `CSR`), drawing registers (`PRIM`, `RGBAQ`, `XYZ2`, `XYZ3`, `TEST_1`, `FRAME_1`, `ZBUF_1`), 128-bit GIFTag decoding, packet dissection, SPRAM canary verification (`0xDEADBEEF`), and EE/IOP disassembler presets.
+- **Godot 4 & Lapis Support (`require "cradare2/godot/lapis"`)**:
+  - GDExtension library verification (`verify_gdextension`), 24-byte Variant decoding (`read_variant`), object header parsing (`read_object`), vtable symbol resolution (`inspect_vtable`), and crash origin classification (`classify_crash`).
+- **In-Memory Buffers (`Cradare2.open_bytes`)**:
+  - Disassemble, inspect symbols, and debug ephemeral byte slices with automatic temporary file lifecycle management.
+- **Lightweight GDB Remote Serial Protocol Client (`Cradare2::Gdb::Client`)**:
+  - Direct socket-level RSP query engine for rapid, zero-overhead memory and register queries against PCSX2, QEMU, or gdbserver stubs during CI audits.
+- **Toolchain Doctor Diagnostics (`Cradare2.doctor` & `r2-crystal doctor`)**:
+  - Audit radare2 binary, ABI version, disassembler architectures, `llvm-symbolizer`, and Crystal compiler with colored status badges.
 - **Extensible Plugin Framework & Interactive Pipe Server**:
   - Modular `Command` classes with configurable prefix (`CommandDispatcher.new(client, prefix: "godot")`), automatic `-j` JSON support, and `Cradare2::Plugin::Server.run`.
 - **Source Line to Assembly Matching (`r2.crystal.lines`)**:

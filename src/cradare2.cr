@@ -18,13 +18,15 @@ require "./cradare2/lines/source_map"
 require "./cradare2/lines/line_resolver"
 require "./cradare2/lines/line_helper"
 require "./cradare2/crystal"
+require "./cradare2/util/script_builder"
+require "./cradare2/util/doctor"
+require "./cradare2/gdb/client"
 require "./cradare2/client"
 require "./cradare2/plugin/command"
 require "./cradare2/plugin/commands/*"
 require "./cradare2/plugin/dispatcher"
 require "./cradare2/plugin/router"
 require "./cradare2/plugin/server"
-require "./cradare2/engine/godot"
 require "./cradare2/tui/explorer"
 
 module Cradare2
@@ -158,6 +160,56 @@ module Cradare2
     ensure
       client.close
     end
+  end
+
+  # Analyzes an in-memory byte slice using radare2, automatically handling temporary file lifecycle.
+  def self.open_bytes(
+    bytes : Bytes,
+    arch : String? = nil,
+    bits : Int32? = nil,
+    cpu : String? = nil,
+    flags : Array(String) = [] of String,
+    &block : Client -> U
+  ) : U forall U
+    temp_file = File.tempfile("cradare2_buf", ".bin")
+    begin
+      File.write(temp_file.path, bytes)
+      opts = Options.new(
+        target: temp_file.path,
+        flags: flags,
+        arch: arch,
+        bits: bits,
+        cpu: cpu
+      )
+      open(opts, &block)
+    ensure
+      temp_file.delete rescue nil
+    end
+  end
+
+  # Connects radare2 to a remote GDB stub (e.g. PCSX2, QEMU, gdbserver).
+  def self.gdb(
+    host : String = "127.0.0.1",
+    port : Int32 = 1234,
+    arch : String? = nil,
+    bits : Int32? = nil,
+    cpu : String? = nil,
+    timeout : Time::Span? = nil,
+    &block : Client -> U
+  ) : U forall U
+    opts = Options.new(
+      timeout: timeout,
+      arch: arch,
+      bits: bits,
+      cpu: cpu
+    )
+    opts.gdb_target(host, port)
+    open(opts, &block)
+  end
+
+  # Runs toolchain and environment diagnostics.
+  def self.doctor : Util::Doctor
+    Util::Doctor.new.run
   end
 
   private def self.build_transport(

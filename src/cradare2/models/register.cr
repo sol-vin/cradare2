@@ -269,6 +269,127 @@ module Cradare2
         self["r7"]? || self["x7"]? || 0_u64
       end
 
+      # MIPS / PS2 Emotion Engine (R5900) and IOP (R3000A) registers
+      def zero : UInt64
+        self["zero"]? || 0_u64
+      end
+
+      def at : UInt64
+        self["at"]? || 0_u64
+      end
+
+      def v0 : UInt64
+        self["v0"]? || 0_u64
+      end
+
+      def v1 : UInt64
+        self["v1"]? || 0_u64
+      end
+
+      def a0 : UInt64
+        self["a0"]? || 0_u64
+      end
+
+      def a1 : UInt64
+        self["a1"]? || 0_u64
+      end
+
+      def a2 : UInt64
+        self["a2"]? || 0_u64
+      end
+
+      def a3 : UInt64
+        self["a3"]? || 0_u64
+      end
+
+      def t0 : UInt64
+        self["t0"]? || 0_u64
+      end
+
+      def t1 : UInt64
+        self["t1"]? || 0_u64
+      end
+
+      def t2 : UInt64
+        self["t2"]? || 0_u64
+      end
+
+      def t3 : UInt64
+        self["t3"]? || 0_u64
+      end
+
+      def t4 : UInt64
+        self["t4"]? || 0_u64
+      end
+
+      def t5 : UInt64
+        self["t5"]? || 0_u64
+      end
+
+      def t6 : UInt64
+        self["t6"]? || 0_u64
+      end
+
+      def t7 : UInt64
+        self["t7"]? || 0_u64
+      end
+
+      def t8 : UInt64
+        self["t8"]? || 0_u64
+      end
+
+      def t9 : UInt64
+        self["t9"]? || 0_u64
+      end
+
+      def s0 : UInt64
+        self["s0"]? || 0_u64
+      end
+
+      def s1 : UInt64
+        self["s1"]? || 0_u64
+      end
+
+      def s2 : UInt64
+        self["s2"]? || 0_u64
+      end
+
+      def s3 : UInt64
+        self["s3"]? || 0_u64
+      end
+
+      def s4 : UInt64
+        self["s4"]? || 0_u64
+      end
+
+      def s5 : UInt64
+        self["s5"]? || 0_u64
+      end
+
+      def s6 : UInt64
+        self["s6"]? || 0_u64
+      end
+
+      def s7 : UInt64
+        self["s7"]? || 0_u64
+      end
+
+      def gp : UInt64
+        self["gp"]? || 0_u64
+      end
+
+      def ra : UInt64
+        self["ra"]? || lr
+      end
+
+      def hi : UInt64
+        self["hi"]? || 0_u64
+      end
+
+      def lo : UInt64
+        self["lo"]? || 0_u64
+      end
+
       # Compares this register snapshot against a baseline, returning a mapping of
       # register_name => {old_value, new_value} for only registers whose values changed.
       def diff(baseline : Registers) : Hash(String, Tuple(UInt64, UInt64))

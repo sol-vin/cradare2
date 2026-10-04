@@ -98,8 +98,17 @@ module Cradare2
         begin
           yield self
         ensure
-          space(old) unless old.empty?
+          if old.empty? || old == "*"
+            clear_space
+          else
+            space(old)
+          end
         end
+      end
+
+      # Executes the block within the designated flag space, safely restoring the previous space.
+      def in_space(name : String, &block : Flags -> U) : U forall U
+        space(name, &block)
       end
 
       # Returns the name of the currently active flag space (`fs.`).

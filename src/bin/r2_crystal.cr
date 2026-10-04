@@ -1,5 +1,7 @@
 require "option_parser"
 require "../cradare2"
+require "../cradare2/godot"
+require "../cradare2/ps2"
 require "../cradare2/plugin/dispatcher"
 require "../cradare2/plugin/server"
 
@@ -100,6 +102,34 @@ end
 
 if ARGV.empty?
   puts parser
+  exit(0)
+end
+
+if ARGV.first? == "doctor"
+  doc = Cradare2.doctor
+  puts doc.render
+  exit(doc.items.any? { |i| i.status == :fail } ? 1 : 0)
+end
+
+if ARGV.first? == "gdextension"
+  ARGV.shift
+  target_dll = ARGV.first?
+  unless target_dll && File.file?(target_dll)
+    STDERR.puts "#{Cradare2::Util::CLIFormatter.badge("ERROR", bg: :red)} GDExtension library '#{target_dll}' not found."
+    exit(1)
+  end
+
+  Cradare2.open(target_dll) do |client|
+    check = client.godot.verify_gdextension
+    if check.valid
+      puts "#{Cradare2::Util::CLIFormatter.badge("PASS", bg: :green)} Valid GDExtension (#{check.exports_count} exports, entry: #{check.entrypoint_name})"
+      exit(0)
+    else
+      puts "#{Cradare2::Util::CLIFormatter.badge("FAIL", bg: :red)} Invalid GDExtension library:"
+      check.warnings.each { |w| puts "  - #{w}" }
+      exit(1)
+    end
+  end
   exit(0)
 end
 

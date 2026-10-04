@@ -20,6 +20,19 @@ module Cradare2
         self
       end
 
+      # Batches setting multiple comments in a single pipe transaction.
+      def batch_set(comments : Hash(Address, String)) : self
+        return self if comments.empty?
+        comments.each_slice(50) do |slice|
+          cmds = slice.map do |addr, text|
+            encoded = Base64.strict_encode(text)
+            "CCu #{encoded} @ #{AddressUtils.to_hex(addr)}"
+          end
+          @client.cmd(cmds.join(";"))
+        end
+        self
+      end
+
       # Retrieves the comment at the specified address, or nil if no comment is set (`CC. @ <addr>`).
       def get(address : Address) : String?
         addr_str = AddressUtils.to_hex(address)
@@ -76,6 +89,11 @@ module Cradare2
         rescue
         end
         result
+      end
+
+      # Returns all comments as an array of (address, comment) tuples.
+      def list : Array(Tuple(UInt64, String))
+        all.to_a
       end
     end
   end

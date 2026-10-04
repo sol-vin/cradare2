@@ -1,5 +1,7 @@
 require "spec"
 require "../src/cradare2"
+require "../src/cradare2/godot"
+require "../src/cradare2/ps2"
 
 module SpecFixtures
   SAMPLE_IJ = <<-JSON

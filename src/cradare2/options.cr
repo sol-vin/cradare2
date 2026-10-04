@@ -12,6 +12,10 @@ module Cradare2
     property path_mappings : Hash(String, String)
     property auto_analyze : Bool
     property log_commands : Bool
+    property arch : String?
+    property bits : Int32?
+    property cpu : String?
+    property eval_commands : Array(String)
 
     def initialize(
       @target : String? = nil,
@@ -25,6 +29,10 @@ module Cradare2
       @path_mappings : Hash(String, String) = Hash(String, String).new,
       @auto_analyze : Bool = false,
       @log_commands : Bool = false,
+      @arch : String? = nil,
+      @bits : Int32? = nil,
+      @cpu : String? = nil,
+      @eval_commands : Array(String) = [] of String,
     )
     end
 
@@ -94,6 +102,46 @@ module Cradare2
       self
     end
 
+    def arch(val : String?) : self
+      @arch = val
+      if val
+        add_flag("-a")
+        add_flag(val)
+      end
+      self
+    end
+
+    def bits(val : Int32?) : self
+      @bits = val
+      if val
+        add_flag("-b")
+        add_flag(val.to_s)
+      end
+      self
+    end
+
+    def cpu(val : String?) : self
+      @cpu = val
+      if val
+        eval("asm.cpu", val)
+      end
+      self
+    end
+
+    def eval(key : String, value : String) : self
+      cmd = "#{key}=#{value}"
+      @eval_commands << cmd
+      add_flag("-e")
+      add_flag(cmd)
+      self
+    end
+
+    def gdb_target(host : String = "127.0.0.1", port : Int32 = 1234) : self
+      @target = "gdb://#{host}:#{port}"
+      debug_mode(true)
+      self
+    end
+
     def clone : Options
       Options.new(
         target: @target,
@@ -106,7 +154,11 @@ module Cradare2
         source_paths: @source_paths.dup,
         path_mappings: @path_mappings.dup,
         auto_analyze: @auto_analyze,
-        log_commands: @log_commands
+        log_commands: @log_commands,
+        arch: @arch,
+        bits: @bits,
+        cpu: @cpu,
+        eval_commands: @eval_commands.dup
       )
     end
   end
