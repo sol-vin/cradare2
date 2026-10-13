@@ -23,7 +23,7 @@ module Cradare2
         @address : UInt64,
         @size : UInt64,
         @type : String = "FUNC",
-        @binding : String = "GLOBAL"
+        @binding : String = "GLOBAL",
       )
       end
     end
@@ -42,7 +42,7 @@ module Cradare2
         @instructions : Array(Model::Instruction),
         @calls : Array(UInt64) = [] of UInt64,
         @jumps : Array(UInt64) = [] of UInt64,
-        @is_mips : Bool = false
+        @is_mips : Bool = false,
       )
       end
 
@@ -71,7 +71,7 @@ module Cradare2
         @total_symbols : Int32,
         @functions_disassembled : Int32,
         @total_instructions : Int32,
-        @duration_ms : Float64
+        @duration_ms : Float64,
       )
       end
 

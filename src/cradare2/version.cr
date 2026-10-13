@@ -1,3 +1,3 @@
 module Cradare2
-  VERSION = "0.2.27"
+  VERSION = "0.2.30"
 end
