@@ -29,6 +29,7 @@ require "./cradare2/plugin/router"
 require "./cradare2/plugin/server"
 require "./cradare2/tui/explorer"
 require "./cradare2/bridge/elf_bridge"
+require "./cradare2/ps2"
 
 module Cradare2
   # Opens a radare2 session using an `Options` struct.
