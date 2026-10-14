@@ -1,16 +1,44 @@
 require "./registers"
 require "./gif_dissector"
+require "./vu_profiler"
 require "../../util/script_builder"
 require "../../address"
 
 module Cradare2
   module Platform
     module PS2
-      # High-level helper providing PlayStation 2 Emotion Engine, GS, SPRAM, and GIF packet forensics.
+      # High-level helper providing PlayStation 2 Emotion Engine, VU1, GS, SPRAM, and GIF packet forensics.
       class Helper
         getter client : Client
 
         def initialize(@client : Client)
+        end
+
+        # Access the PlayStation 2 EE/VU1 memory & cycle profiling bridge (`0x11008000` / `0x1100C000`).
+        def vu_profiler : VUProfiler
+          @vu_profiler ||= VUProfiler.new(@client)
+        end
+
+        # Profiles VU1 Micro-Memory (`0x11008000`) and pipeline stall hazards.
+        def profile_vu1(start_pc : UInt32 = 0_u32, max_instructions : Int32 = 256) : VUProfileReport
+          vu_profiler.profile(start_pc, max_instructions)
+        end
+
+        # Declarative block receiver for VU1 profiling over r2pipe.
+        def profile_vu1(&block : VUProfiler ->) : VUProfileReport
+          prof = VUProfiler.new(@client)
+          yield prof
+          prof.profile
+        end
+
+        # Reads raw bytes from VU1 Micro-Memory (`0x11008000 + offset`).
+        def read_vu1_micro(offset : Int32 = 0, size : Int32 = 256) : Bytes
+          vu_profiler.read_micro_memory(offset, size)
+        end
+
+        # Reads raw bytes from VU1 Data Memory (`0x1100C000 + offset`).
+        def read_vu1_data(offset : Int32 = 0, size : Int32 = 256) : Bytes
+          vu_profiler.read_data_memory(offset, size)
         end
 
         # Configures radare2 disassembler for PS2 Emotion Engine (MIPS R5900, 32-bit).
@@ -25,7 +53,7 @@ module Cradare2
           self
         end
 
-        # Injects PS2 EE memory map flags (SPRAM, GS registers, DMAC) into the "ps2" flag space.
+        # Injects PS2 EE memory map flags (SPRAM, VU0/VU1, VIF1, GS registers, DMAC) into the "ps2" flag space.
         def setup_memory_map : self
           flags = {
             "spram.start"        => Registers::SPRAM_START,
@@ -33,6 +61,15 @@ module Cradare2
             "spram.frame_count"  => Registers::SPRAM_START + 0x04_u64,
             "spram.vm_status"    => Registers::SPRAM_START + 0x08_u64,
             "spram.end"          => Registers::SPRAM_END,
+            "vu0.micro_mem"      => Registers::VU0_MICRO_MEM,
+            "vu0.data_mem"       => Registers::VU0_DATA_MEM,
+            "vu1.micro_mem"      => Registers::VU1_MICRO_MEM,
+            "vu1.data_mem"       => Registers::VU1_DATA_MEM,
+            "vif1.stat"          => Registers::VIF1_STAT,
+            "vif1.code"          => Registers::VIF1_CODE,
+            "vif1.tops"          => Registers::VIF1_TOPS,
+            "vif1.itop"          => Registers::VIF1_ITOP,
+            "vif1.top"           => Registers::VIF1_TOP,
             "gs.pmode"           => Registers::GS_PMODE,
             "gs.smode1"          => Registers::GS_SMODE1,
             "gs.smode2"          => Registers::GS_SMODE2,
@@ -44,6 +81,10 @@ module Cradare2
             "gs.csr"             => Registers::GS_CSR,
             "gs.imr"             => Registers::GS_IMR,
             "gs.busdir"          => Registers::GS_BUSDIR,
+            "dmac.chcr1"         => Registers::DMAC_CHCR1,
+            "dmac.madr1"         => Registers::DMAC_MADR1,
+            "dmac.qwc1"          => Registers::DMAC_QWC1,
+            "dmac.tadr1"         => Registers::DMAC_TADR1,
             "dmac.chcr2"         => Registers::DMAC_CHCR2,
             "dmac.madr2"         => Registers::DMAC_MADR2,
             "dmac.qwc2"          => Registers::DMAC_QWC2,
@@ -117,14 +158,21 @@ module Cradare2
           builder.flag("spram.start", Registers::SPRAM_START)
           builder.flag("spram.canary", Registers::SPRAM_START)
           builder.flag("spram.end", Registers::SPRAM_END)
+          builder.flag("vu1.micro_mem", Registers::VU1_MICRO_MEM)
+          builder.flag("vu1.data_mem", Registers::VU1_DATA_MEM)
 
           builder.section("GS Privileged Registers")
           builder.flag("gs.pmode", Registers::GS_PMODE)
           builder.flag("gs.csr", Registers::GS_CSR)
 
-          builder.section("DMAC Registers")
+          builder.section("DMAC & VIF1 Registers")
+          builder.flag("dmac.chcr1", Registers::DMAC_CHCR1)
+          builder.flag("dmac.madr1", Registers::DMAC_MADR1)
           builder.flag("dmac.chcr2", Registers::DMAC_CHCR2)
           builder.flag("dmac.madr2", Registers::DMAC_MADR2)
+          builder.flag("vif1.stat", Registers::VIF1_STAT)
+          builder.flag("vif1.top", Registers::VIF1_TOP)
+          builder.flag("vif1.tops", Registers::VIF1_TOPS)
 
           builder.section("Print Formats")
           builder.format("gs_pmode", "ww (qword)raw (dword)low (dword)high")
@@ -134,6 +182,8 @@ module Cradare2
           builder.section("Macros")
           builder.macro("ps2_spram", "pxw 32 @ 0x70000000")
           builder.macro("ps2_canary_check", "pxw 4 @ 0x70000000")
+          builder.macro("ps2_vu1_micro", "pxw 64 @ 0x11008000")
+          builder.macro("ps2_vu1_data", "pxw 64 @ 0x1100C000")
 
           builder.to_s
         end

@@ -16,6 +16,10 @@ module Cradare2
         GS_BUSDIR   = 0x12001040_u64 # Host interface bus direction
 
         # Direct Memory Access Controller (DMAC) Registers
+        DMAC_CHCR1  = 0x10009000_u64 # Channel 1 (VIF1) Control Register
+        DMAC_MADR1  = 0x10009010_u64 # Channel 1 (VIF1) Memory Address
+        DMAC_QWC1   = 0x10009020_u64 # Channel 1 (VIF1) Quadword Count
+        DMAC_TADR1  = 0x10009030_u64 # Channel 1 (VIF1) Tag Address
         DMAC_CHCR2  = 0x1000A000_u64 # Channel 2 (GIF) Control Register
         DMAC_MADR2  = 0x1000A010_u64 # Channel 2 Memory Address
         DMAC_QWC2   = 0x1000A020_u64 # Channel 2 Quadword Count
@@ -23,6 +27,52 @@ module Cradare2
         DMAC_D_CTRL = 0x1000E000_u64 # DMAC Global Control
         DMAC_D_STAT = 0x1000E010_u64 # DMAC Status / Interrupt Flags
         DMAC_D_PCR  = 0x1000E020_u64 # DMAC Priority Control
+
+        # Vector Interface 1 (VIF1) Control Registers (0x10003C00 - 0x10003CEF)
+        VIF1_STAT  = 0x10003C00_u64 # VIF1 Status Register
+        VIF1_FBRST = 0x10003C10_u64 # VIF1 Force Break / Reset
+        VIF1_ERR   = 0x10003C20_u64 # VIF1 Error Status
+        VIF1_MARK  = 0x10003C30_u64 # VIF1 Mark Value
+        VIF1_CYCLE = 0x10003C40_u64 # VIF1 Transfer Cycle (CL / WL)
+        VIF1_MODE  = 0x10003C50_u64 # VIF1 Addition Decompression Mode
+        VIF1_NUM   = 0x10003C60_u64 # VIF1 Remaining Data Amount
+        VIF1_MASK  = 0x10003C70_u64 # VIF1 Write Mask Pattern
+        VIF1_CODE  = 0x10003C80_u64 # VIF1 Last Processed VIFcode
+        VIF1_ITOPS = 0x10003C90_u64 # VIF1 Next ITOP Value
+        VIF1_BASE  = 0x10003CA0_u64 # VIF1 Double-Buffer Base Address
+        VIF1_OFST  = 0x10003CB0_u64 # VIF1 Double-Buffer Offset
+        VIF1_TOPS  = 0x10003CC0_u64 # VIF1 Next TOP Value / Unpack Base
+        VIF1_ITOP  = 0x10003CD0_u64 # VIF1 Current ITOP Register
+        VIF1_TOP   = 0x10003CE0_u64 # VIF1 Current Active Double-Buffer TOP
+
+        # Emotion Engine Hardware Timers (Bus Clock 147.456 MHz)
+        EE_T0_COUNT = 0x10000000_u64 # Timer 0 Counter
+        EE_T0_MODE  = 0x10000010_u64 # Timer 0 Mode
+        EE_T1_COUNT = 0x10000800_u64 # Timer 1 Counter
+        EE_T1_MODE  = 0x10000810_u64 # Timer 1 Mode
+
+        # Vector Unit 0 & 1 (VU0 / VU1) Memory-Mapped Regions
+        VU0_MICRO_MEM      = 0x11000000_u64 # 4 KB VU0 Micro-Memory (512 x 64-bit instructions)
+        VU0_MICRO_MEM_END  = 0x11001000_u64
+        VU0_MICRO_MEM_SIZE = 0x00001000_u64
+        VU0_DATA_MEM       = 0x11004000_u64 # 4 KB VU0 Data Memory (256 x 128-bit quadwords)
+        VU0_DATA_MEM_END   = 0x11005000_u64
+        VU0_DATA_MEM_SIZE  = 0x00001000_u64
+
+        VU1_MICRO_MEM      = 0x11008000_u64 # 16 KB VU1 Micro-Memory (2048 x 64-bit instructions)
+        VU1_MICRO_MEM_END  = 0x1100C000_u64
+        VU1_MICRO_MEM_SIZE = 0x00004000_u64
+        VU1_DATA_MEM       = 0x1100C000_u64 # 16 KB VU1 Data Memory (1024 x 128-bit quadwords)
+        VU1_DATA_MEM_END   = 0x11010000_u64
+        VU1_DATA_MEM_SIZE  = 0x00004000_u64
+
+        # Emotion Engine & VU1 Clock Rates & Frame-Budget Cycle Constants
+        EE_CLOCK_HZ     = 294_912_000_u64
+        VU1_CLOCK_HZ    = 147_456_000_u64
+        NTSC_EE_CYCLES  =   4_915_200_u64 # 60 Hz NTSC frame budget in EE cycles
+        NTSC_VU1_CYCLES =   2_457_600_u64 # 60 Hz NTSC frame budget in VU1 cycles
+        PAL_EE_CYCLES   =   5_898_240_u64 # 50 Hz PAL frame budget in EE cycles
+        PAL_VU1_CYCLES  =   2_949_120_u64 # 50 Hz PAL frame budget in VU1 cycles
 
         # PS2 Memory Map Segments
         KUSEG_CACHED   = 0x00000000_u64
